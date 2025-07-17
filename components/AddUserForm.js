@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { createUser } from '../lib/api';
 
 const schema = z.object({
-  email: z.string().email({ message: 'Email invalide' }),
-  password: z.string().min(6, { message: 'Mot de passe trop court' }),
+  email: z.string().email({ message: 'Invalid email address' }),
+  password: z.string().min(6, { message: 'Password too short' }),
   role: z.enum(['admin', 'member']),
 });
 
@@ -32,7 +32,7 @@ export default function AddUserForm() {
     setLoading(true);
     try {
       await createUser(form);
-      setSuccess('Utilisateur ajouté avec succès !');
+      setSuccess('User added successfully!');
       setForm({ email: '', password: '', role: 'member' });
     } catch (err) {
       setError(err.message);
@@ -55,7 +55,7 @@ export default function AddUserForm() {
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-white mb-1">Mot de passe</label>
+        <label className="block text-sm font-medium text-white mb-1">Password</label>
         <input
           type="password"
           name="password"
@@ -66,7 +66,7 @@ export default function AddUserForm() {
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-white mb-1">Rôle</label>
+        <label className="block text-sm font-medium text-white mb-1">Role</label>
         <select
           name="role"
           value={form.role}
@@ -74,7 +74,7 @@ export default function AddUserForm() {
           className="w-full px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
         >
           <option value="admin">Admin</option>
-          <option value="member">Membre</option>
+          <option value="member">Member</option>
         </select>
       </div>
       {error && <div className="text-red-400 text-sm text-center">{error}</div>}
@@ -84,7 +84,7 @@ export default function AddUserForm() {
         disabled={loading}
         className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded shadow disabled:opacity-60"
       >
-        {loading ? 'Ajout en cours...' : 'Ajouter'}
+        {loading ? 'Adding...' : 'Add user'}
       </button>
     </form>
   );
