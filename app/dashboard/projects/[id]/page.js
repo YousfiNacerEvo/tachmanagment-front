@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getProjects, getTasksByProject, createTask, updateTask, deleteTask } from '../../../../lib/api';
-import TaskKanban from '../../../components/TaskKanban';
+import TaskKanban from '../../../../components/TaskKanban';
 
 const PRIORITY_COLORS = {
   'basse': 'bg-green-400 text-green-900',
