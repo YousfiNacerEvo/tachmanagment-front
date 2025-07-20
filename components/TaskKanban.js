@@ -74,10 +74,8 @@ function TaskCard({ task, onEdit, onDelete }) {
       <div className="w-full bg-gray-700 rounded-full h-2 mb-1">
         <div
           className={`h-2 rounded-full ${task.progress === 100 ? 'bg-green-400' : task.progress >= 50 ? 'bg-blue-400' : 'bg-yellow-400'}`}
-          style={{ width: `${task.progress}%` }}
         ></div>
       </div>
-      <span className="text-xs text-gray-400">{task.progress}%</span>
       <div className="flex gap-2 mt-2">
         <button
           onClick={e => { e.stopPropagation(); onEdit && onEdit(task); }}

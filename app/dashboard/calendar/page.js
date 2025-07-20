@@ -141,6 +141,34 @@ export default function CalendarPage() {
       `}</style>
       <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-3xl font-bold text-white mb-6">Calendrier</h1>
+        {/* Legend for colors and types */}
+        <div className="flex flex-wrap gap-4 mb-6 items-center bg-[#232329] p-4 rounded-lg shadow">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-4 h-4 rounded-full" style={{ background: '#60a5fa' }}></span>
+            <span className="text-gray-200 text-sm">Project (Pending)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-4 h-4 rounded-full" style={{ background: '#818cf8' }}></span>
+            <span className="text-gray-200 text-sm">Project (In Progress)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-4 h-4 rounded-full" style={{ background: '#34d399' }}></span>
+            <span className="text-gray-200 text-sm">Project (Done)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-4 h-4 rounded-full" style={{ background: '#6ee7b7' }}></span>
+            <span className="text-gray-200 text-sm">Task (Low)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-4 h-4 rounded-full" style={{ background: '#fde68a' }}></span>
+            <span className="text-gray-200 text-sm">Task (Medium)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-4 h-4 rounded-full" style={{ background: '#fca5a5' }}></span>
+            <span className="text-gray-200 text-sm">Task (High)</span>
+          </div>
+        </div>
+        {/* End legend */}
         {loading ? (
           <div className="text-gray-400 text-center py-10">Chargement...</div>
         ) : error ? (

@@ -2,12 +2,6 @@
 import React from 'react';
 import Link from 'next/link';
 
-function getProgress(status) {
-  if (status === 'done') return 100;
-  if (status === 'in_progress') return 50;
-  return 0;
-}
-
 export default function ProjectTable({ projects, onEdit }) {
   return (
     <div className="overflow-x-auto rounded-xl shadow border border-gray-700 bg-[#232329]">
@@ -53,11 +47,11 @@ export default function ProjectTable({ projects, onEdit }) {
               <td className="px-4 py-3">
                 <div className="w-full bg-gray-700 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full ${getProgress(project.status) === 100 ? 'bg-green-400' : getProgress(project.status) === 50 ? 'bg-blue-400' : 'bg-yellow-400'}`}
-                    style={{ width: getProgress(project.status) + '%' }}
+                    className={`h-2 rounded-full ${project.status === 'done' ? 'bg-green-400' : project.status === 'in_progress' ? 'bg-blue-400' : 'bg-yellow-400'}`}
+                    style={{ width: project.status === 'done' ? '100%' : project.status === 'in_progress' ? '50%' : '0%' }}
                   ></div>
                 </div>
-                <span className="text-xs ml-2">{getProgress(project.status)}%</span>
+                <span className="text-xs ml-2">{project.status === 'done' ? '100%' : project.status === 'in_progress' ? '50%' : '0%'}</span>
               </td>
             </tr>
           ))}

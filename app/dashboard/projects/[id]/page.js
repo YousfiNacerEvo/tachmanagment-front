@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getProjects, getTasksByProject, createTask, updateTask, deleteTask } from '../../../../lib/api';
+import { getProjects, getTasksByProject, createTask, updateTask, deleteTask, getTasksByProjectAndUser } from '../../../../lib/api';
+import { useAuth } from '../../../../context/AuthContext';
 import TaskKanban from '../../../../components/TaskKanban';
 
 const PRIORITY_COLORS = {
@@ -42,7 +43,6 @@ function TaskItem({ task, onEdit, onDelete, onToggleComplete }) {
       </div>
       <div className="flex items-center justify-between text-sm text-gray-300">
         <span>Deadline: {task.deadline || 'No deadline'}</span>
-        <span>{task.progress}% complete</span>
       </div>
       <div className="flex gap-2 mt-3">
         <button
@@ -68,7 +68,6 @@ function TaskForm({ task, onSubmit, onCancel, loading }) {
     status: task?.status || 'à faire',
     deadline: task?.deadline || '',
     priority: task?.priority || 'moyenne',
-    progress: task?.progress || 0,
   });
 
   const handleSubmit = (e) => {
@@ -116,18 +115,6 @@ function TaskForm({ task, onSubmit, onCancel, loading }) {
           onChange={(e) => setForm({ ...form, deadline: e.target.value })}
           className="w-full px-3 py-2 bg-[#232329] border border-gray-600 rounded text-white"
         />
-        <div className="flex items-center gap-2">
-          <label className="text-white text-sm">Progress:</label>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={form.progress}
-            onChange={(e) => setForm({ ...form, progress: parseInt(e.target.value) })}
-            className="flex-1"
-          />
-          <span className="text-white text-sm w-12">{form.progress}%</span>
-        </div>
         <div className="flex gap-2">
           <button
             type="submit"
@@ -180,6 +167,7 @@ export default function ProjectDetailPage() {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const { isAdmin, user } = useAuth();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -187,7 +175,7 @@ export default function ProjectDetailPage() {
         setLoading(true);
         const [projectsData, tasksData] = await Promise.all([
           getProjects(),
-          getTasksByProject(projectId)
+          isAdmin ? getTasksByProject(projectId) : getTasksByProjectAndUser(projectId, user?.id)
         ]);
         
         const currentProject = projectsData.find(p => (p.id || p._id) === projectId);
@@ -206,7 +194,7 @@ export default function ProjectDetailPage() {
     };
 
     fetchData();
-  }, [projectId]);
+  }, [projectId, isAdmin, user]);
 
   const handleCreateTask = async (taskData) => {
     setFormLoading(true);
@@ -249,10 +237,9 @@ export default function ProjectDetailPage() {
 
   const handleToggleComplete = async (task) => {
     const newStatus = task.status === 'terminé' ? 'en cours' : 'terminé';
-    const newProgress = newStatus === 'terminé' ? 100 : 50;
     
     try {
-      const updatedTask = await updateTask(task.id, { status: newStatus, progress: newProgress });
+      const updatedTask = await updateTask(task.id, { status: newStatus });
       setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
     } catch (err) {
       console.error('Failed to update task:', err);
@@ -329,7 +316,7 @@ export default function ProjectDetailPage() {
           onDelete={handleDeleteTask}
           onStatusChange={async (task, newStatus) => {
             try {
-              const updatedTask = await updateTask(task.id, { status: newStatus, progress: newStatus === 'terminé' ? 100 : newStatus === 'en cours' ? 50 : 0 });
+              const updatedTask = await updateTask(task.id, { status: newStatus });
               setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
             } catch (err) {
               console.error('Erreur lors du changement de statut de la tâche', err);

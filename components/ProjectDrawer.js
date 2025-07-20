@@ -1,15 +1,16 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { getTasksByProject, createTask, updateTask, deleteTask } from '../lib/api';
+import { getUsers } from '../lib/api';
 import { toast } from 'react-hot-toast';
 
-function TaskMiniForm({ onAdd, onCancel, initial }) {
+function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false }) {
   const [form, setForm] = useState(initial || {
     title: '',
     status: 'to do',
     deadline: '',
     priority: 'medium',
-    // progress removed
+    user_ids: [],
   });
   return (
     <div className="flex flex-col gap-2 bg-[#18181b] border border-gray-700 rounded-lg p-3 mb-2">
@@ -46,6 +47,23 @@ function TaskMiniForm({ onAdd, onCancel, initial }) {
           onChange={e => setForm({ ...form, deadline: e.target.value })}
           className="px-2 py-1 rounded bg-[#232329] border border-gray-600 text-white min-w-[110px] max-w-[140px]"
         />
+        {/* Multi-user assignment for admins */}
+        {isAdmin && users.length > 0 && (
+          <select
+            multiple
+            value={form.user_ids}
+            onChange={e => {
+              const options = Array.from(e.target.selectedOptions).map(opt => opt.value);
+              setForm({ ...form, user_ids: options });
+            }}
+            className="px-2 py-1 rounded bg-[#232329] border border-gray-600 text-white min-w-[160px]"
+            required
+          >
+            {users.map(u => (
+              <option key={u.id} value={u.id}>{u.email} ({u.role})</option>
+            ))}
+          </select>
+        )}
       </div>
       <div className="flex gap-2 mt-1">
         <button type="button" onClick={() => onAdd(form)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded">{initial ? 'Edit' : 'Add'}</button>
@@ -68,6 +86,7 @@ export default function ProjectDrawer({
   onDelete,
   formTasks = [],
   setFormTasks = () => {},
+  isAdmin = false,
 }) {
   useEffect(() => {
     if (!open) return;
@@ -97,6 +116,13 @@ export default function ProjectDrawer({
     }
   }, [editMode, open, form, setFormTasks]);
 
+  const [users, setUsers] = useState([]);
+  useEffect(() => {
+    if (isAdmin && open) {
+      getUsers().then(setUsers).catch(() => setUsers([]));
+    }
+  }, [isAdmin, open]);
+
   // Fermer si on clique sur le fond
   const handleBackdrop = (e) => {
     if (e.target === e.currentTarget) onClose();
@@ -109,7 +135,7 @@ export default function ProjectDrawer({
   const handleAddTask = async (task) => {
     if (editMode && form && (form.id || form._id)) {
       try {
-        const { progress, ...taskWithoutProgress } = task;
+        const taskWithoutProgress = { ...task };
         if (task.id) {
           await updateTask(task.id, { ...taskWithoutProgress, project_id: form.id || form._id });
           toast.success('Task updated successfully!');
@@ -177,119 +203,162 @@ export default function ProjectDrawer({
           <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
             {editMode ? 'Edit Project' : 'Create Project'}
           </h2>
-          <form onSubmit={editMode ? onUpdate : onSubmit} className="flex flex-col gap-4 flex-1">
-            <input
-              name="title"
-              value={form.title}
-              onChange={onChange}
-              placeholder="Title"
-              required
-              className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-              disabled={loading}
-            />
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={onChange}
-              placeholder="Description"
-              required
-              className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-              rows={2}
-              disabled={loading}
-            />
-            <select
-              name="status"
-              value={form.status}
-              onChange={onChange}
-              className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-              disabled={loading}
-            >
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="done">Done</option>
-            </select>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                name="start"
-                value={form.start}
-                onChange={onChange}
-                className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
-                required
-                disabled={loading}
-              />
-              <input
-                type="date"
-                name="end"
-                value={form.end}
-                onChange={onChange}
-                className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
-                required
-                disabled={loading}
-              />
-            </div>
-            {error && <div className="text-red-500 text-center text-sm">{error}</div>}
-            <div className="flex-1"></div>
-            <button
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded shadow mt-2 disabled:opacity-60"
-              disabled={loading}
-            >
-              {loading ? (editMode ? 'Updating...' : 'Creating...') : (editMode ? 'Update' : 'Create')}
-            </button>
-            {editMode && (
-              <button
-                type="button"
-                onClick={onDelete}
-                className="mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded shadow disabled:opacity-60"
-                disabled={loading}
-              >
-                Delete Project
-              </button>
-            )}
-            {/* TASKS SECTION */}
-            <div className="bg-[#18181b] border border-gray-700 rounded-lg p-3 mb-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-white font-semibold">Project tasks</span>
-                <button type="button" onClick={() => { setShowTaskForm(true); setEditingTaskIdx(null); }} className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded">+ Add task</button>
-              </div>
-              {showTaskForm && (
-                <TaskMiniForm
-                  onAdd={handleAddTask}
-                  onCancel={() => { setShowTaskForm(false); setEditingTaskIdx(null); }}
-                  initial={editingTaskIdx !== null ? formTasks[editingTaskIdx] : undefined}
-                />
-              )}
+          {!isAdmin ? (
+            <div>
+              <h3 className="text-xl font-bold text-white mb-4">Your tasks in this project</h3>
               {formTasks.length === 0 ? (
-                <div className="text-gray-400 text-xs text-center py-2">
-                  {editMode ? (
-                    (form && (form.id || form._id))
-                      ? 'Aucune tâche trouvée pour ce projet.'
-                      : 'Impossible de charger les tâches : ID projet manquant.'
-                  ) : 'No tasks added'}
-                </div>
+                <div className="text-gray-400 text-center">You have no tasks assigned in this project.</div>
               ) : (
                 <ul className="space-y-2">
                   {formTasks.map((task, idx) => (
-                    <li key={idx} className="flex items-center justify-between bg-[#232329] border border-gray-700 rounded px-3 py-2">
-                      <div>
-                        <span className="text-white font-medium">{task.title}</span>
-                        <span className={`ml-2 text-xs px-2 py-1 rounded font-semibold ${task.priority === 'high' ? 'bg-red-400 text-red-900' : task.priority === 'medium' ? 'bg-yellow-400 text-yellow-900' : 'bg-green-400 text-green-900'}`}>{task.priority}</span>
-                        <span className="ml-2 text-xs text-gray-400">{task.status}</span>
-                        <span className="ml-2 text-xs text-gray-400">{task.deadline}</span>
-                        <span className="ml-2 text-xs text-gray-400">{task.progress}%</span>
-                      </div>
-                      <div className="flex gap-1">
-                        <button type="button" onClick={() => { setEditingTaskIdx(idx); setShowTaskForm(true); }} className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded">Edit</button>
-                        <button type="button" onClick={() => handleDeleteTask(task, idx)} className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">Delete</button>
-                      </div>
+                    <li key={idx} className="bg-[#232329] border border-gray-700 rounded px-3 py-2 text-white">
+                      <div className="font-semibold">{task.title}</div>
+                      <div className="text-xs text-gray-400">{task.status} | {task.deadline || 'No deadline'}</div>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-            {/* ...end tasks section... */}
-          </form>
+          ) : (
+            <form onSubmit={editMode ? onUpdate : onSubmit} className="flex flex-col gap-4 flex-1">
+              <input
+                name="title"
+                value={form.title}
+                onChange={onChange}
+                placeholder="Title"
+                required
+                className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                disabled={loading}
+              />
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={onChange}
+                placeholder="Description"
+                required
+                className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                rows={2}
+                disabled={loading}
+              />
+
+              
+              {/* Project assignees for admins */}
+              {isAdmin && users.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-white mb-1">Assign project to users</label>
+                  <select
+                    name="user_ids"
+                    multiple
+                    value={form.user_ids || []}
+                    onChange={e => {
+                      const options = Array.from(e.target.selectedOptions).map(opt => opt.value);
+                      onChange({ target: { name: 'user_ids', value: options } });
+                    }}
+                    className="w-full px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white min-h-[100px]"
+                    required
+                  >
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.email} ({u.role})</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">Hold Ctrl/Cmd to select multiple users. At least one user must be selected.</p>
+                </div>
+              )}
+              <select
+                name="status"
+                value={form.status}
+                onChange={onChange}
+                className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                disabled={loading}
+              >
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+              </select>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  name="start"
+                  value={form.start}
+                  onChange={onChange}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
+                  required
+                  disabled={loading}
+                />
+                <input
+                  type="date"
+                  name="end"
+                  value={form.end}
+                  onChange={onChange}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#18181b] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              {error && <div className="text-red-500 text-center text-sm">{error}</div>}
+              <div className="flex-1"></div>
+              <button
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded shadow mt-2 disabled:opacity-60"
+                disabled={loading || !isAdmin}
+              >
+                {loading ? (editMode ? 'Updating...' : 'Creating...') : (editMode ? 'Update' : 'Create')}
+              </button>
+              {editMode && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded shadow disabled:opacity-60"
+                  disabled={loading || !isAdmin}
+                >
+                  Delete Project
+                </button>
+              )}
+              {/* TASKS SECTION */}
+              <div className="bg-[#18181b] border border-gray-700 rounded-lg p-3 mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-semibold">Project tasks</span>
+                  <button type="button" onClick={() => { setShowTaskForm(true); setEditingTaskIdx(null); }} className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded" disabled={!isAdmin}>+ Add task</button>
+                </div>
+                {showTaskForm && (
+                  <TaskMiniForm
+                    onAdd={handleAddTask}
+                    onCancel={() => { setShowTaskForm(false); setEditingTaskIdx(null); }}
+                    initial={editingTaskIdx !== null ? formTasks[editingTaskIdx] : undefined}
+                    users={users}
+                    isAdmin={isAdmin}
+                  />
+                )}
+                {formTasks.length === 0 ? (
+                  <div className="text-gray-400 text-xs text-center py-2">
+                    {editMode ? (
+                      (form && (form.id || form._id))
+                        ? 'Aucune tâche trouvée pour ce projet.'
+                        : 'Impossible de charger les tâches : ID projet manquant.'
+                    ) : 'No tasks added'}
+                  </div>
+                ) : (
+                  <ul className="space-y-2">
+                    {formTasks.map((task, idx) => (
+                      <li key={idx} className="flex items-center justify-between bg-[#232329] border border-gray-700 rounded px-3 py-2">
+                        <div>
+                          <span className="text-white font-medium">{task.title}</span>
+                          <span className={`ml-2 text-xs px-2 py-1 rounded font-semibold ${task.priority === 'high' ? 'bg-red-400 text-red-900' : task.priority === 'medium' ? 'bg-yellow-400 text-yellow-900' : 'bg-green-400 text-green-900'}`}>{task.priority}</span>
+                          <span className="ml-2 text-xs text-gray-400">{task.status}</span>
+                          <span className="ml-2 text-xs text-gray-400">{task.deadline}</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button type="button" onClick={() => { setEditingTaskIdx(idx); setShowTaskForm(true); }} className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded" disabled={!isAdmin}>Edit</button>
+                          <button type="button" onClick={() => handleDeleteTask(task, idx)} className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded" disabled={!isAdmin}>Delete</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {/* ...end tasks section... */}
+            </form>
+          )}
         </div>
       </aside>
     </div>

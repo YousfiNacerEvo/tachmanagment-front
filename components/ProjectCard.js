@@ -4,12 +4,6 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Link from 'next/link';
 
-function getProgress(status) {
-  if (status === 'done') return 100;
-  if (status === 'in_progress') return 50;
-  return 0;
-}
-
 export default function ProjectCard({ project, onEdit }) {
   const {
     attributes,
@@ -59,11 +53,11 @@ export default function ProjectCard({ project, onEdit }) {
       </div>
       <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
         <div
-          className={`h-2 rounded-full ${getProgress(project.status) === 100 ? 'bg-green-400' : getProgress(project.status) === 50 ? 'bg-blue-400' : 'bg-yellow-400'}`}
-          style={{ width: getProgress(project.status) + '%' }}
+          className={`h-2 rounded-full bg-gray-400`}
+          style={{ width: '100%' }}
         ></div>
       </div>
-      <span className="text-xs text-gray-400">{getProgress(project.status)}% complete</span>
+      <span className="text-xs text-gray-400">No progress data</span>
     </div>
   );
 } 

@@ -1,10 +1,11 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { getProjects, createProject, updateProject, deleteProject, createTask } from '../../../lib/api';
+import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser } from '../../../lib/api';
 import ProjectDrawer from '../../../components/ProjectDrawer';
 import ProjectHeaderTabs from '../../../components/ProjectHeaderTabs';
 import ProjectTable from '../../../components/ProjectTable';
 import ProjectKanban from '../../../components/ProjectKanban';
+import { useAuth } from '../../../context/AuthContext';
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', color: 'bg-yellow-400 text-yellow-900' },
@@ -31,6 +32,7 @@ export default function ProjectsPage() {
     status: 'pending',
     start: '',
     end: '',
+    user_ids: [],
   });
   const [formTasks, setFormTasks] = useState([]); // <-- gestion des tâches à la création
   const [formError, setFormError] = useState(null);
@@ -38,10 +40,12 @@ export default function ProjectsPage() {
   const [viewMode, setViewMode] = useState('table');
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
+  const { isAdmin, loading: authLoading, user } = useAuth();
 
   const fetchProjects = useCallback(() => {
     setLoading(true);
-    getProjects()
+    const fetch = isAdmin ? getProjects : () => getProjectsByUser(user?.id);
+    fetch()
       .then(data => {
         setProjects(data);
         setError(null);
@@ -50,7 +54,7 @@ export default function ProjectsPage() {
         setError(err.message || 'Failed to load projects');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [isAdmin, user]);
 
   useEffect(() => {
     fetchProjects();
@@ -84,8 +88,7 @@ export default function ProjectsPage() {
       if (formTasks.length > 0) {
         await Promise.all(formTasks.map(async (task) => {
           try {
-            // On retire la propriété 'progress' si elle existe
-            const { progress, ...taskWithoutProgress } = task;
+            const taskWithoutProgress = { ...task };
             await createTask({ ...taskWithoutProgress, project_id: createdProject.id || createdProject._id });
           } catch (err) {
             console.error('Erreur lors de la création d\'une tâche associée :', err);
@@ -93,7 +96,7 @@ export default function ProjectsPage() {
           }
         }));
       }
-      setForm({ title: '', description: '', status: 'pending', start: '', end: '' });
+      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
       setFormTasks([]);
       setDrawerOpen(false);
       setFormError(null);
@@ -108,14 +111,15 @@ export default function ProjectsPage() {
   const handleEdit = (project) => {
     setEditMode(true);
     setEditId(project.id || project._id);
-    setForm({
-      id: project.id || project._id, // Ajout de l'ID pour le drawer
-      title: project.title,
-      description: project.description,
-      status: project.status,
-      start: project.start,
-      end: project.end,
-    });
+          setForm({
+        id: project.id || project._id, // Ajout de l'ID pour le drawer
+        title: project.title,
+        description: project.description,
+        status: project.status,
+        start: project.start,
+        end: project.end,
+        user_ids: project.assignees || [],
+      });
     setDrawerOpen(true);
     setFormError(null);
   };
@@ -129,7 +133,7 @@ export default function ProjectsPage() {
       setDrawerOpen(false);
       setEditMode(false);
       setEditId(null);
-      setForm({ title: '', description: '', status: 'pending', start: '', end: '' });
+      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
       setFormError(null);
       fetchProjects();
     } catch (err) {
@@ -147,7 +151,7 @@ export default function ProjectsPage() {
       setDrawerOpen(false);
       setEditMode(false);
       setEditId(null);
-      setForm({ title: '', description: '', status: 'pending', start: '', end: '' });
+      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
       setFormError(null);
       fetchProjects();
     } catch (err) {
@@ -182,19 +186,21 @@ export default function ProjectsPage() {
     <div className="max-w-5xl mx-auto p-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <h1 className="text-3xl font-bold text-white">Projects</h1>
-        <button
-          onClick={() => {
-            setDrawerOpen(true);
-            setEditMode(false);
-            setEditId(null);
-            setForm({ title: '', description: '', status: 'pending', start: '', end: '' });
-            setFormTasks([]);
-            setFormError(null);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded shadow transition-colors"
-        >
-          + Create Project
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => {
+              setDrawerOpen(true);
+              setEditMode(false);
+              setEditId(null);
+              setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
+              setFormTasks([]);
+              setFormError(null);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded shadow transition-colors"
+          >
+            + Create Project
+          </button>
+        )}
       </div>
       <ProjectHeaderTabs viewMode={viewMode} setViewMode={setViewMode} />
       {loading ? (
@@ -226,7 +232,7 @@ export default function ProjectsPage() {
           setDrawerOpen(false);
           setEditMode(false);
           setEditId(null);
-          setForm({ title: '', description: '', status: 'pending', start: '', end: '' });
+          setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
           setFormTasks([]);
           setFormError(null);
         }}
@@ -240,6 +246,7 @@ export default function ProjectsPage() {
         editMode={editMode}
         formTasks={formTasks}
         setFormTasks={setFormTasks}
+        isAdmin={isAdmin}
       />
     </div>
   );

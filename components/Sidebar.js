@@ -2,16 +2,20 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-
-const navItems = [
-  { href: '/dashboard/projects', label: 'Projects', icon: '📁' },
-  { href: '/dashboard/tasks', label: 'Tasks', icon: '✅' },
-  { href: '/dashboard/calendar', label: 'Calendar', icon: '📅' },
-  { href: '/dashboard/add-user', label: 'Add User', icon: '➕' },
-];
+import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
+
+  const navItems = [
+    { href: '/dashboard/projects', label: 'Projects', icon: '📁' },
+    { href: '/dashboard/tasks', label: 'Tasks', icon: '✅' },
+    { href: '/dashboard/calendar', label: 'Calendar', icon: '📅' },
+  ];
+  if (isAdmin) {
+    navItems.push({ href: '/dashboard/add-user', label: 'Add User', icon: '➕' });
+  }
 
   return (
     <aside className="h-screen bg-[#18181b] text-white flex flex-col w-64 min-w-[200px] border-r border-[#232329]">
