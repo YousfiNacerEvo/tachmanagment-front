@@ -3,10 +3,13 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
+import { logout } from '../lib/auth';
+import { useRouter } from 'next/navigation';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, setUser } = useAuth();
+  const router = useRouter();
 
   const navItems = [
     { href: '/dashboard/projects', label: 'Projects', icon: '📁' },
@@ -16,6 +19,12 @@ export default function Sidebar() {
   if (isAdmin) {
     navItems.push({ href: '/dashboard/add-user', label: 'Add User', icon: '➕' });
   }
+
+  const handleLogout = async () => {
+    await logout();
+    setUser(null);
+    router.replace('/login');
+  };
 
   return (
     <aside className="h-screen bg-[#18181b] text-white flex flex-col w-64 min-w-[200px] border-r border-[#232329]">
@@ -38,6 +47,14 @@ export default function Sidebar() {
           );
         })}
       </nav>
+      {user && (
+        <button
+          onClick={handleLogout}
+          className="m-4 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded transition-colors"
+        >
+          Log out
+        </button>
+      )}
     </aside>
   );
 } 
