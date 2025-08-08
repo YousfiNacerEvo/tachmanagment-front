@@ -21,9 +21,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="min-h-screen bg-[#f7f9fb] text-[#171717]">
         <Toaster position="top-right" />
         <AuthProvider>
         {children}

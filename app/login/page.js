@@ -1,5 +1,6 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { login } from '../../lib/auth';
@@ -11,9 +12,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!loading && user) {
-      router.replace('/dashboard');
+      router.replace('/dashboard/projects');
     }
   }, [user, loading, router]);
 
@@ -30,7 +31,7 @@ export default function LoginPage() {
       }
     } else {
       setUser(loggedInUser);
-      router.replace('/dashboard');
+      router.replace('/dashboard/projects');
     }
     setFormLoading(false);
   };
@@ -38,17 +39,20 @@ export default function LoginPage() {
   if (loading || formLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="bg-foreground/10 rounded-xl shadow-lg p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Sign In</h2>
+    <div className="flex items-center justify-center min-h-screen bg-[#f7f9fb]">
+      <div className="card w-full max-w-md p-8">
+        <div className="mb-6 text-center">
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back</h1>
+          <p className="text-gray-500 mt-1">Sign in to continue</p>
+        </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email address"
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            className="px-4 py-2 rounded border border-foreground/20 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/30"
+            className="input"
           />
           <input
             type="password"
@@ -56,17 +60,16 @@ export default function LoginPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
-            className="px-4 py-2 rounded border border-foreground/20 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/30"
+            className="input"
           />
-          <button
-            type="submit"
-            className="bg-foreground text-background font-semibold py-2 rounded hover:bg-foreground/80 transition-colors"
-          >
-            Sign In
-          </button>
+          <div className="flex items-center justify-between text-sm">
+            <div />
+            <Link href="/login/forgot" className="text-blue-600 hover:underline">Forgot password?</Link>
+          </div>
+          <button type="submit" className="btn-primary w-full">Sign in</button>
           {error && <div className="text-red-500 text-center text-sm mt-2">{error}</div>}
         </form>
       </div>
     </div>
   );
-} 
+}

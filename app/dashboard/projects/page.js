@@ -1,11 +1,14 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
-import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser } from '../../../lib/api';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser, assignGroupToProject, unassignGroupFromProject, getGroupsByProject, getGroupMembers } from '../../../lib/api';
 import ProjectDrawer from '../../../components/ProjectDrawer';
 import ProjectHeaderTabs from '../../../components/ProjectHeaderTabs';
 import ProjectTable from '../../../components/ProjectTable';
 import ProjectKanban from '../../../components/ProjectKanban';
+import SearchAndFilter from '../../../components/SearchAndFilter';
 import { useAuth } from '../../../context/AuthContext';
+import { useSearchParams } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', color: 'bg-yellow-400 text-yellow-900' },
@@ -22,6 +25,7 @@ function StatusBadge({ status }) {
 }
 
 export default function ProjectsPage() {
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,6 +37,7 @@ export default function ProjectsPage() {
     start: '',
     end: '',
     user_ids: [],
+    group_ids: [],
   });
   const [formTasks, setFormTasks] = useState([]); // <-- gestion des tâches à la création
   const [formError, setFormError] = useState(null);
@@ -40,31 +45,114 @@ export default function ProjectsPage() {
   const [viewMode, setViewMode] = useState('table');
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
-  const { isAdmin, loading: authLoading, user } = useAuth();
+  const { isAdmin, isMember, loading: authLoading, user, session } = useAuth();
+
+  // États pour les filtres et la recherche
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    status: '',
+    progress: ''
+  });
+
+  const [timeoutError, setTimeoutError] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchProjects = useCallback(() => {
     setLoading(true);
-    const fetch = isAdmin ? getProjects : () => getProjectsByUser(user?.id);
+    const fetch = isAdmin
+      ? () => getProjects(session)
+      : () => getProjectsByUser(user?.id, session);
     fetch()
       .then(data => {
+        console.log('[fetchProjects] data:', data);
         setProjects(data);
         setError(null);
       })
       .catch(err => {
         setError(err.message || 'Failed to load projects');
+        console.error('[fetchProjects] error:', err);
       })
       .finally(() => setLoading(false));
-  }, [isAdmin, user]);
+  }, [isAdmin, user, session]);
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    // Fonction de nettoyage pour éviter les effets de bord
+    let isMounted = true;
+
+    const loadProjects = async () => {
+      if (!isMounted) return;
+      if (authLoading) return;
+      if (isAdmin || (isMember && user && user.id)) {
+        setIsRefreshing(true);
+        try {
+          await fetchProjects();
+        } finally {
+          if (isMounted) {
+            setIsRefreshing(false);
+          }
+        }
+      }
+    };
+
+    // Charger les projets au montage
+    loadProjects();
+
+    // Recharger les projets lors du retour sur la page
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isMounted) {
+        console.log('Onglet redevenu visible, rechargement des projets...');
+        // Ne pas recharger si une création est en cours
+        if (!formLoading) {
+          console.log('✅ Rechargement autorisé - pas de création en cours');
+          // Délai pour éviter les conflits avec les requêtes en cours
+          setTimeout(() => {
+            if (isMounted && !formLoading) {
+              loadProjects();
+            }
+          }, 1000);
+        } else {
+          console.log('⚠️ Rechargement ignoré car création en cours (formLoading: true)');
+        }
+      }
+    };
+
+    // Ajouter l'écouteur d'événement
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Nettoyer l'écouteur lors du démontage
+    return () => {
+      isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchProjects, authLoading, isAdmin, isMember, user, formLoading]);
+
+  // Ouvrir automatiquement le drawer pour un projet donné via ?projectId= ... (depuis le calendrier)
+  useEffect(() => {
+    const projectId = searchParams?.get('projectId');
+    if (!projectId || projects.length === 0) return;
+    const proj = projects.find(p => (p.id || p._id) === projectId);
+    if (proj) {
+      handleEdit(proj);
+    }
+  }, [searchParams, projects]);
+
+  // Supprimer le useEffect de timeout React - on utilise le timeout réseau (AbortController)
+
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => setLoading(false), 10000); // 10s max
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
 
   const handleChange = e => {
+    if (e.target.name === 'user_ids') {
+      console.log('[handleChange] Nouvelle valeur user_ids:', e.target.value);
+    }
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const validateForm = () => {
+  const validateForm = async () => {
     if (!form.title.trim() || !form.description.trim() || !form.start || !form.end) {
       setFormError('All fields are required.');
       return false;
@@ -73,87 +161,291 @@ export default function ProjectsPage() {
       setFormError('End date cannot be before start date.');
       return false;
     }
+    // Nouvelle logique : il faut au moins un utilisateur OU un groupe avec au moins un membre
+    if ((!form.user_ids || form.user_ids.length === 0)) {
+      if (!form.group_ids || form.group_ids.length === 0) {
+        setFormError('At least one user or group must be assigned to the project.');
+        return false;
+      }
+      // Vérifier que les groupes ont au moins un membre
+      const allMembers = await Promise.all(
+        form.group_ids.map(async groupId => {
+          const members = await getGroupMembers(groupId, session);
+          return members;
+        })
+      );
+      const hasMember = allMembers.flat().length > 0;
+      if (!hasMember) {
+        setFormError('Assigned groups must contain at least one user.');
+        return false;
+      }
+    }
     setFormError(null);
     return true;
   };
 
   const handleCreate = async e => {
     e.preventDefault();
-    if (!validateForm()) return;
+   
+    
+    // Empêcher de relancer si on a déjà eu un timeout
+    if (timeoutError) {
+      console.log('❌ BLOCAGE: timeoutError présent, empêcher relance');
+      toast.error('Veuillez fermer et rouvrir le drawer pour réessayer.');
+      return;
+    }
+    
+    let validation = await validateForm();
+    console.log('validation result:', validation);
+    if (!validation) {
+      console.log('❌ Validation échouée, arrêt');
+      setFormLoading(false);
+      return;
+    }
+    console.log('✅ Validation OK, lancement création');
     setFormLoading(true);
+    setTimeoutError(null);
     try {
-      // Création du projet
-      const createdProject = await createProject(form);
-      // Création des tâches associées si besoin
+      console.log('🔄 Début création projet...');
+      // 1. Vérifier conflits groupes/utilisateurs AVANT de créer le projet
+      if (form.group_ids && form.group_ids.length > 0 && form.user_ids && form.user_ids.length > 0) {
+        console.log('🔍 Vérification conflits groupes/utilisateurs...');
+        // Récupérer les membres des groupes à assigner
+        const membersToCheck = await Promise.all(
+          form.group_ids.map(async groupId => {
+            const members = await getGroupMembers(groupId, session);
+            return members.map(member => member.user_id);
+          })
+        );
+        // Vérifier si un membre est déjà assigné directement
+        const duplicateUsers = membersToCheck.flat().filter(userId => form.user_ids.includes(userId));
+        if (duplicateUsers.length > 0) {
+          throw new Error(`Cannot assign group because it contains users already directly assigned to this project: ${duplicateUsers.join(', ')}`);
+        }
+      }
+
+      // 2. Créer le projet SEULEMENT si tout est OK
+      console.log('📤 Envoi createProject avec form:', form);
+      const createdProject = await createProject(form, session);
+      console.log('✅ Projet créé:', createdProject);
+
+      // 3. Assignation des groupes
+      if (form.group_ids && form.group_ids.length > 0) {
+        console.log('🔗 Assignation des groupes...');
+        try {
+          await Promise.all(
+            form.group_ids.map(groupId => assignGroupToProject(groupId, createdProject.id || createdProject._id, session))
+          );
+        } catch (groupAssignError) {
+          // Si erreur lors de l'assignation des groupes, supprimer le projet créé (rollback)
+          await deleteProject(createdProject.id || createdProject._id, session);
+          throw new Error('Failed to assign groups to project: ' + (groupAssignError.message || groupAssignError));
+        }
+      }
+
+      // 4. Création des tâches associées si besoin
       if (formTasks.length > 0) {
+        console.log('📝 Création des tâches associées...');
         await Promise.all(formTasks.map(async (task) => {
           try {
             const taskWithoutProgress = { ...task };
-            await createTask({ ...taskWithoutProgress, project_id: createdProject.id || createdProject._id });
+            await createTask({ ...taskWithoutProgress, project_id: createdProject.id || createdProject._id },user_ids, group_ids,session);
           } catch (err) {
             console.error('Erreur lors de la création d\'une tâche associée :', err);
-            alert('Erreur lors de la création d\'une tâche associée : ' + (err.message || err));
+            toast.error('Error while creating an associated task: ' + (err.message || err));
           }
         }));
       }
-      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
+      
+      console.log('🎉 SUCCÈS: Projet créé avec succès');
+      // Ajouter le nouveau projet à l'état local
+      const projectWithAssignments = {
+        ...createdProject,
+        assignees: form.user_ids || [],
+        groups: form.group_ids || []
+      };
+      setProjects(prev => [projectWithAssignments, ...prev]);
+      
+      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [], group_ids: [] });
       setFormTasks([]);
       setDrawerOpen(false);
       setFormError(null);
-      fetchProjects();
+      setTimeoutError(null);
+      toast.success('Project created successfully!');
     } catch (err) {
-      setFormError(err.message || 'Failed to create project');
+      console.log('❌ ERREUR dans handleCreate:', err);
+      // Log détaillé de l'erreur
+      if (err && err.response) {
+        console.error('Erreur backend:', err.response);
+      } else {
+        console.error('Erreur lors de la création du projet:', err);
+      }
+      
+      // Gérer le timeout réseau vs erreur normale
+      if (err.message && err.message.includes('serveur ne répond pas')) {
+        console.log('⏰ Timeout réseau détecté');
+        setTimeoutError(err.message);
+      } else {
+        setFormError(err.message || 'Failed to create project');
+      }
+      toast.error('Failed to create project: ' + (err.message || 'Unknown error'));
     } finally {
+      console.log('🏁 finally: setFormLoading(false)');
       setFormLoading(false);
     }
   };
 
-  const handleEdit = (project) => {
+  const handleEdit = async (project) => {
     setEditMode(true);
     setEditId(project.id || project._id);
-          setForm({
+    
+    try {
+      // Récupérer les groupes assignés au projet
+      const projectGroups = await getGroupsByProject(project.id || project._id,session);
+      const groupIds = projectGroups.map(group => group.group_id);
+      
+      // Récupérer seulement les utilisateurs directement assignés (pas les membres des groupes)
+      const directAssignees = project.assignees || project.user_ids || [];
+      
+      // Filtrer pour exclure les membres des groupes
+      let filteredAssignees = directAssignees;
+      if (groupIds.length > 0) {
+        // Récupérer les membres de tous les groupes assignés
+        const allGroupMembers = [];
+        for (const groupId of groupIds) {
+          try {
+            const members = await getGroupMembers(groupId, session);
+            const memberIds = members.map(member => member.user_id);
+            allGroupMembers.push(...memberIds);
+          } catch (error) {
+            console.error(`Error getting members for group ${groupId}:`, error);
+          }
+        }
+        // Exclure les membres des groupes des assignees directs
+        filteredAssignees = directAssignees.filter(userId => !allGroupMembers.includes(userId));
+      }
+      
+      setForm({
         id: project.id || project._id, // Ajout de l'ID pour le drawer
         title: project.title,
         description: project.description,
         status: project.status,
         start: project.start,
         end: project.end,
-        user_ids: project.assignees || [],
+        user_ids: filteredAssignees,
+        group_ids: groupIds,
       });
+    } catch (error) {
+      console.error('Error loading project groups:', error);
+      // En cas d'erreur, utiliser les données de base sans groupes
+      setForm({
+        id: project.id || project._id,
+        title: project.title,
+        description: project.description,
+        status: project.status,
+        start: project.start,
+        end: project.end,
+        user_ids: project.assignees || project.user_ids || [],
+        group_ids: [],
+      });
+    }
+    
     setDrawerOpen(true);
     setFormError(null);
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    let validation = validateForm();
+    if (!validation) {
+      setFormLoading(false);
+      return;
+    }
     setFormLoading(true);
     try {
-      await updateProject(editId, form);
+      const { user_ids, group_ids, ...projectData } = form;
+      
+      // Mettre à jour le projet
+      const updatedProject = await updateProject(editId, projectData, user_ids, session);
+      
+      // Gérer les assignations de groupes
+      if (group_ids && group_ids.length >= 0) {
+        // Récupérer les groupes actuellement assignés
+        console.log('[handleUpdate] editId:', editId, 'type:', typeof editId);
+        const currentGroups = await getGroupsByProject(editId,session);
+        const currentGroupIds = currentGroups.map(g => g.group_id);
+        console.log('[handleUpdate] currentGroupIds:', currentGroupIds);
+        console.log('[handleUpdate] form.group_ids:', form.group_ids);
+        
+        // Convertir tous les IDs en strings pour la comparaison
+        const currentGroupIdsStr = currentGroupIds.map(id => id.toString());
+        const formGroupIdsStr = form.group_ids.map(id => id.toString());
+        
+        // Retirer les groupes non sélectionnés
+        const groupsToRemove = currentGroupIdsStr.filter(id => !formGroupIdsStr.includes(id));
+        console.log('[handleUpdate] groupsToRemove:', groupsToRemove);
+        await Promise.all(
+          groupsToRemove.map(async groupId => {
+            const res = await unassignGroupFromProject(parseInt(groupId), editId, session);
+            console.log('[handleUpdate] unassignGroupFromProject:', { groupId, res });
+          })
+        );
+        
+        // Ajouter les nouveaux groupes
+        const groupsToAdd = formGroupIdsStr.filter(id => !currentGroupIdsStr.includes(id));
+        console.log('[handleUpdate] groupsToAdd:', groupsToAdd);
+        await Promise.all(
+          groupsToAdd.map(async groupId => {
+            const res = await assignGroupToProject(parseInt(groupId), editId, session);
+            console.log('[handleUpdate] assignGroupToProject:', { groupId, res });
+          })
+        );
+      }
+      
+      // Mettre à jour directement l'état local
+      setProjects(prev => prev.map(project => 
+        (project.id || project._id) === editId
+          ? { 
+              ...project, 
+              ...projectData,
+              assignees: user_ids || [],
+              groups: group_ids || []
+            }
+          : project
+      ));
+      
       setDrawerOpen(false);
       setEditMode(false);
       setEditId(null);
-      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
+      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [], group_ids: [] });
       setFormError(null);
-      fetchProjects();
+      toast.success('Project updated successfully!');
     } catch (err) {
       setFormError(err.message || 'Failed to update project');
+      toast.error('Failed to update project: ' + (err.message || 'Unknown error'));
+      console.error('[handleUpdate] error:', err);
     } finally {
       setFormLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!editId) return;
+    if (!editId) {
+      setFormLoading(false);
+      return;
+    }
     setFormLoading(true);
     try {
-      await deleteProject(editId);
+      await deleteProject(editId, session);
+      
+      // Supprimer le projet de l'état local
+      setProjects(prev => prev.filter(project => (project.id || project._id) !== editId));
+      
       setDrawerOpen(false);
       setEditMode(false);
       setEditId(null);
       setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
       setFormError(null);
-      fetchProjects();
     } catch (err) {
       setFormError(err.message || 'Failed to delete project');
     } finally {
@@ -163,6 +455,7 @@ export default function ProjectsPage() {
 
   const handleStatusChange = async (project, newStatus) => {
     try {
+      const { user_ids} = form;
       // Mise à jour optimiste
       setProjects(prev => prev.map(p => 
         (p.id || p._id) === (project.id || project._id) 
@@ -171,7 +464,7 @@ export default function ProjectsPage() {
       ));
       
       // Appel API
-      await updateProject(project.id || project._id, { status: newStatus });
+      await updateProject(project.id || project._id, { status: newStatus },user_ids, session);
     } catch (err) {
       // En cas d'erreur, recharger les projets
       console.error('Failed to update project status:', err);
@@ -179,46 +472,108 @@ export default function ProjectsPage() {
     }
   };
 
-  // Sort by start date (bonus)
-  const sortedProjects = [...projects].sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+  // Fonction pour filtrer et rechercher les projets
+  const filterProjects = (projects) => {
+    console.log('[filterProjects] input:', projects);
+    return projects.filter(project => {
+      // Filtre par recherche (titre et description)
+      const searchMatch = !searchTerm || 
+        project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      // Filtre par statut (gère les différentes variantes)
+      const normalizeStatus = (status) => {
+        if (status === 'in_progress') return 'in progress';
+        return status;
+      };
+      
+      const projectStatus = normalizeStatus(project.status);
+      const filterStatus = normalizeStatus(filters.status);
+      const statusMatch = !filters.status || projectStatus === filterStatus;
+
+      // Filtre par progression
+      const progressMatch = !filters.progress || project.progress === parseInt(filters.progress);
+
+      return searchMatch && statusMatch && progressMatch;
+    });
+  };
+
+  // Projets filtrés et triés
+  const filteredAndSortedProjects = useMemo(() => {
+    const filtered = filterProjects(projects);
+    return filtered.sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+  }, [projects, searchTerm, filters]);
+
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+  };
 
   return (
     <div className="max-w-5xl mx-auto p-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-white">Projects</h1>
+        <h1 className="text-3xl font-bold text-black">Projects</h1>
         {isAdmin && (
           <button
             onClick={() => {
               setDrawerOpen(true);
               setEditMode(false);
               setEditId(null);
-              setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
+              setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [], group_ids: [] });
               setFormTasks([]);
               setFormError(null);
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded shadow transition-colors"
+            disabled={formLoading}
           >
-            + Create Project
+            {formLoading ? 'Creating...' : '+ Create Project'}
           </button>
         )}
       </div>
+
+      {/* Composant de recherche et filtres */}
+      <SearchAndFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        showStatusFilter={true}
+        showPriorityFilter={false}
+        showProjectFilter={false}
+        showProgressFilter={true}
+        isTaskContext={false}
+      />
+
       <ProjectHeaderTabs viewMode={viewMode} setViewMode={setViewMode} />
-      {loading ? (
-        <div className="text-white text-center py-10">Loading projects...</div>
+      
+      {/* Affichage principal */}
+      {loading || isRefreshing ? (
+        <div className="text-gray-400 text-center py-10">
+          {isRefreshing ? 'Actualisation des projets...' : 'Loading projects...'}
+        </div>
       ) : error ? (
-        <div className="text-red-400 text-center py-10">{error}</div>
+        <div className="text-red-500 text-center py-4">{error}</div>
       ) : projects.length === 0 ? (
-        <div className="text-gray-400 text-center py-10">No projects found.</div>
+        <div className="text-gray-400 text-center py-4">No projects found.</div>
+      ) : filteredAndSortedProjects.length === 0 ? (
+        <div className="text-gray-400 text-center py-10">
+          {searchTerm || filters.status || filters.progress 
+            ? 'No projects match your filters.' 
+            : 'No projects found.'}
+        </div>
       ) : viewMode === 'table' ? (
-        <ProjectTable projects={sortedProjects} onEdit={handleEdit} />
+        <ProjectTable projects={filteredAndSortedProjects} onEdit={handleEdit} />
       ) : (
         <div>
           <div className="flex items-center mb-4">
             <h2 className="text-2xl font-bold text-white">Projects Kanban</h2>
+            <span className="ml-2 text-gray-400">({filteredAndSortedProjects.length} projects)</span>
           </div>
           <div style={{ height: 'calc(100vh - 60px)', display: 'flex', alignItems: 'flex-start', overflow: 'hidden' }}>
             <ProjectKanban 
-              projects={sortedProjects} 
+              projects={filteredAndSortedProjects} 
               onNewProject={null}
               onEdit={handleEdit}
               onStatusChange={handleStatusChange}
@@ -226,15 +581,18 @@ export default function ProjectsPage() {
           </div>
         </div>
       )}
+      
       <ProjectDrawer
         open={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
           setEditMode(false);
           setEditId(null);
-          setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
+          setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [], group_ids: [] });
           setFormTasks([]);
           setFormError(null);
+          setTimeoutError(null);
+          setFormLoading(false);
         }}
         onSubmit={handleCreate}
         onUpdate={handleUpdate}
@@ -242,7 +600,7 @@ export default function ProjectsPage() {
         form={form}
         onChange={handleChange}
         loading={formLoading}
-        error={formError}
+        error={timeoutError || formError}
         editMode={editMode}
         formTasks={formTasks}
         setFormTasks={setFormTasks}

@@ -5,6 +5,7 @@ import { getProjects, getTasksByProject, createTask, updateTask, deleteTask, get
 import { useAuth } from '../../../../context/AuthContext';
 import TaskKanban from '../../../../components/TaskKanban';
 
+
 const PRIORITY_COLORS = {
   'basse': 'bg-green-400 text-green-900',
   'moyenne': 'bg-yellow-400 text-yellow-900',
@@ -19,29 +20,25 @@ const STATUS_COLORS = {
 
 function TaskItem({ task, onEdit, onDelete, onToggleComplete }) {
   return (
-    <div className="bg-[#232329] border border-gray-700 rounded-lg p-4 mb-3">
+    <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           <input
             type="checkbox"
             checked={task.status === 'terminé'}
             onChange={() => onToggleComplete(task)}
-            className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
           />
-          <h3 className={`font-semibold ${task.status === 'terminé' ? 'line-through text-gray-400' : 'text-white'}`}>
+          <h3 className={`font-semibold ${task.status === 'terminé' ? 'line-through text-gray-400' : 'text-gray-900'}`}>
             {task.title}
           </h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-1 rounded text-xs font-semibold ${PRIORITY_COLORS[task.priority]}`}>
-            {task.priority}
-          </span>
-          <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[task.status]}`}>
-            {task.status}
-          </span>
+          <span className={`px-2 py-1 rounded text-xs font-semibold ${PRIORITY_COLORS[task.priority]}`}>{task.priority}</span>
+          <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[task.status]}`}>{task.status}</span>
         </div>
       </div>
-      <div className="flex items-center justify-between text-sm text-gray-300">
+      <div className="flex items-center justify-between text-sm text-gray-500">
         <span>Deadline: {task.deadline || 'No deadline'}</span>
       </div>
       <div className="flex gap-2 mt-3">
@@ -76,8 +73,8 @@ function TaskForm({ task, onSubmit, onCancel, loading }) {
   };
 
   return (
-    <div className="bg-[#18181b] border border-gray-600 rounded-lg p-4 mb-4">
-      <h3 className="text-lg font-semibold text-white mb-3">
+    <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-4">
+      <h3 className="text-lg font-semibold text-gray-900 mb-3">
         {task ? 'Edit Task' : 'Add New Task'}
       </h3>
       <form onSubmit={handleSubmit} className="space-y-3">
@@ -86,14 +83,14 @@ function TaskForm({ task, onSubmit, onCancel, loading }) {
           placeholder="Task title"
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
-          className="w-full px-3 py-2 bg-[#232329] border border-gray-600 rounded text-white"
+          className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-900"
           required
         />
         <div className="grid grid-cols-2 gap-3">
           <select
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value })}
-            className="px-3 py-2 bg-[#232329] border border-gray-600 rounded text-white"
+            className="px-3 py-2 bg-white border border-gray-300 rounded text-gray-900"
           >
             <option value="à faire">À faire</option>
             <option value="en cours">En cours</option>
@@ -102,7 +99,7 @@ function TaskForm({ task, onSubmit, onCancel, loading }) {
           <select
             value={form.priority}
             onChange={(e) => setForm({ ...form, priority: e.target.value })}
-            className="px-3 py-2 bg-[#232329] border border-gray-600 rounded text-white"
+            className="px-3 py-2 bg-white border border-gray-300 rounded text-gray-900"
           >
             <option value="basse">Basse</option>
             <option value="moyenne">Moyenne</option>
@@ -113,20 +110,21 @@ function TaskForm({ task, onSubmit, onCancel, loading }) {
           type="date"
           value={form.deadline}
           onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-          className="w-full px-3 py-2 bg-[#232329] border border-gray-600 rounded text-white"
+          className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-gray-900"
         />
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-3">
           <button
             type="submit"
+            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50"
           >
-            {loading ? 'Saving...' : (task ? 'Update' : 'Add')}
+            {task ? 'Update' : 'Create'}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
+            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs rounded"
+            disabled={loading}
           >
             Cancel
           </button>
@@ -167,15 +165,14 @@ export default function ProjectDetailPage() {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
-  const { isAdmin, user } = useAuth();
-
+  const { isAdmin, user, session, loading: authLoading } = useAuth();
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const [projectsData, tasksData] = await Promise.all([
-          getProjects(),
-          isAdmin ? getTasksByProject(projectId) : getTasksByProjectAndUser(projectId, user?.id)
+          getProjects(session),
+          isAdmin ? getTasksByProject(projectId, session) : getTasksByProjectAndUser(projectId, user?.id, session)
         ]);
         
         const currentProject = projectsData.find(p => (p.id || p._id) === projectId);
@@ -193,14 +190,16 @@ export default function ProjectDetailPage() {
       }
     };
 
-    fetchData();
-  }, [projectId, isAdmin, user]);
+    if (!authLoading && session && (isAdmin || user?.id)) {
+      fetchData();
+    }
+  }, [projectId, isAdmin, user, session, authLoading]);
 
   const handleCreateTask = async (taskData) => {
     setFormLoading(true);
     try {
       console.log('Tentative de création de tâche avec :', { ...taskData, project_id: projectId });
-      const newTask = await createTask({ ...taskData, project_id: projectId });
+      const newTask = await createTask({ ...taskData, project_id: projectId },user_ids, group_ids,session);
       setTasks(prev => [newTask, ...prev]);
       setShowTaskForm(false);
     } catch (err) {
@@ -214,7 +213,7 @@ export default function ProjectDetailPage() {
   const handleUpdateTask = async (taskData) => {
     setFormLoading(true);
     try {
-      const updatedTask = await updateTask(editingTask.id, taskData);
+      const updatedTask = await updateTask(editingTask.id, taskData, [], [], session);
       setTasks(prev => prev.map(t => t.id === editingTask.id ? updatedTask : t));
       setEditingTask(null);
     } catch (err) {
@@ -228,7 +227,7 @@ export default function ProjectDetailPage() {
     if (!confirm('Are you sure you want to delete this task?')) return;
     
     try {
-      await deleteTask(taskId);
+      await deleteTask(taskId,session);
       setTasks(prev => prev.filter(t => t.id !== taskId));
     } catch (err) {
       console.error('Failed to delete task:', err);
@@ -239,7 +238,7 @@ export default function ProjectDetailPage() {
     const newStatus = task.status === 'terminé' ? 'en cours' : 'terminé';
     
     try {
-      const updatedTask = await updateTask(task.id, { status: newStatus });
+      const updatedTask = await updateTask(task.id, { status: newStatus }, [], [], session);
       setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
     } catch (err) {
       console.error('Failed to update task:', err);
@@ -316,7 +315,7 @@ export default function ProjectDetailPage() {
           onDelete={handleDeleteTask}
           onStatusChange={async (task, newStatus) => {
             try {
-              const updatedTask = await updateTask(task.id, { status: newStatus });
+              const updatedTask = await updateTask(task.id, { status: newStatus }, [], [], session);
               setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
             } catch (err) {
               console.error('Erreur lors du changement de statut de la tâche', err);
