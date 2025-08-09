@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   getStandaloneTasks, 
@@ -39,7 +39,7 @@ const PRIORITY_COLORS = {
   high: "bg-red-400 text-red-900",
 };
 
-export default function TasksPage() {
+function TasksContent() {
   const searchParams = useSearchParams();
   const { session } = useAuth();
   const { isAdmin, isMember, loading: authLoading, user } = useUser();
@@ -584,4 +584,12 @@ export default function TasksPage() {
       )}
     </div>
   );
-} 
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-10">Loading tasks...</div>}>
+      <TasksContent />
+    </Suspense>
+  );
+}

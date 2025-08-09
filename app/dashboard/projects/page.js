@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser, assignGroupToProject, unassignGroupFromProject, getGroupsByProject, getGroupMembers } from '../../../lib/api';
 import ProjectDrawer from '../../../components/ProjectDrawer';
 import ProjectHeaderTabs from '../../../components/ProjectHeaderTabs';
@@ -24,7 +24,7 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function ProjectsPage() {
+function ProjectsContent() {
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -608,4 +608,12 @@ export default function ProjectsPage() {
       />
     </div>
   );
-} 
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<div className="text-gray-400 text-center py-10">Loading projects...</div>}>
+      <ProjectsContent />
+    </Suspense>
+  );
+}

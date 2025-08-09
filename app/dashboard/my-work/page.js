@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useUser } from '../../../hooks/useUser';
 import { useAuth } from '../../../context/AuthContext';
 import { 
@@ -28,7 +28,7 @@ import {
   Building
 } from 'lucide-react';
 
-export default function MyWorkPage() {
+function MyWorkContent() {
   const { user, loading: userLoading } = useUser();
   const { session } = useAuth();
   const searchParams = useSearchParams();
@@ -524,4 +524,12 @@ export default function MyWorkPage() {
       </div>
     </div>
   );
-} 
+}
+
+export default function MyWorkPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+      <MyWorkContent />
+    </Suspense>
+  );
+}
