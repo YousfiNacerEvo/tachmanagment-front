@@ -1,10 +1,12 @@
 'use client';
-import React, { useEffect, useState } from 'react';
-import { getTasksByProject, getTasksByProjectWithAssignees, createTask, updateTask, deleteTask, updateProject } from '../lib/api';
+import React, { useEffect, useState, useRef } from 'react';
+import { getTasksByProject, getTasksByProjectWithAssignees, createTask, updateTask, deleteTask, updateProject, addTaskFiles } from '../lib/api';
 import { getUsers } from '../lib/api';
 import { toast } from 'react-hot-toast';
 import ModernAssigneeSelector from './ModernAssigneeSelector';
 import { getAllGroups } from '../lib/api';
+import FileManager from './FileManager';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
 
@@ -19,6 +21,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
     deadline: '',
     user_ids: [],
     group_ids: [],
+    files: [],
   });
 
   const handleSubmit = (e) => {
@@ -90,6 +93,54 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
           rows={2}
           className="w-full px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white placeholder-gray-400 resize-none"
         />
+
+        {/* Optional files during creation/update inside drawer */}
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Files (optional)</label>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => e.currentTarget.nextElementSibling?.click()}
+              className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+            >
+              Select files
+            </button>
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length > 0) {
+                  setForm(prev => ({ ...prev, files: [...(prev.files || []), ...files] }));
+                  e.target.value = '';
+                }
+              }}
+            />
+            {Array.isArray(form.files) && form.files.length > 0 && (
+              <span className="text-xs text-gray-400">{form.files.length} file(s) selected</span>
+            )}
+          </div>
+          {Array.isArray(form.files) && form.files.length > 0 && (
+            <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {form.files.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-white text-xs flex items-center justify-between">
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="truncate" title={f.name}>{f.name}</div>
+                    <div className="text-[10px] text-gray-400">{(f.size/1024).toFixed(1)} KB</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, files: prev.files.filter((_, idx) => idx !== i) }))}
+                    className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-[10px]"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         
         <div className="flex gap-2">
           <button 
@@ -102,6 +153,9 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
           >
             {initial ? 'Update Task' : 'Add Task'}
           </button>
+          {Array.isArray(form.files) && form.files.length > 0 && (
+            <span className="text-xs text-gray-400 self-center">{form.files.length} file(s) selected</span>
+          )}
           <button 
             type="button" 
             onClick={onCancel}
@@ -196,6 +250,10 @@ export default function ProjectDrawer({
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTaskIdx, setEditingTaskIdx] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const [filesTaskOpenId, setFilesTaskOpenId] = useState(null);
+  const [newFiles, setNewFiles] = useState([]);
+  const createFilesInputRef = useRef(null);
+  const openCreateFilePicker = () => createFilesInputRef.current?.click();
 
   // Ajout ou édition d'une tâche en mode édition : envoie à l'API puis recharge la liste
   const handleAddTask = async (task) => {
@@ -203,7 +261,7 @@ export default function ProjectDrawer({
     if (editMode && form && (form.id || form._id)) {
       try {
         // Extraire user_ids et group_ids de l'objet task
-        const { user_ids, group_ids, ...taskData } = task;
+        const { user_ids, group_ids, files = [], ...taskData } = task;
         console.log('Extracted user_ids:', user_ids, 'group_ids:', group_ids);
         console.log('Task data to send:', taskData);
         
@@ -211,6 +269,32 @@ export default function ProjectDrawer({
           console.log('Updating existing task:', task.id);
           await updateTask(task.id, { ...taskData, project_id: form.id || form._id }, user_ids, group_ids, session);
           toast.success('Task updated successfully!');
+
+          // Upload any selected files for existing task
+          if (Array.isArray(files) && files.length > 0) {
+            const uploaded = [];
+            for (const file of files) {
+              const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+              const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
+              const path = `tasks/${task.id}/${filename}`;
+              const { error: upErr } = await supabase.storage.from('filesmanagment').upload(path, file, { contentType: file.type || 'application/octet-stream' });
+              if (upErr) throw upErr;
+              const { data: signed } = await supabase.storage.from('filesmanagment').createSignedUrl(path, 60 * 60 * 24 * 7);
+              uploaded.push({
+                name: file.name,
+                path,
+                url: signed?.signedUrl || '',
+                size: file.size,
+                type: file.type || 'application/octet-stream',
+                uploaded_at: new Date().toISOString(),
+              });
+            }
+            try {
+              await addTaskFiles(task.id, uploaded, session);
+            } catch (e) {
+              console.error('[addTaskFiles after update] failed:', e);
+            }
+          }
           
           // Mettre à jour directement l'état local
           setFormTasks(prev => prev.map(t => 
@@ -230,6 +314,32 @@ export default function ProjectDrawer({
           console.log('Creating new task with project_id:', form.id || form._id);
           const newTask = await createTask({ ...taskData, project_id: form.id || form._id },user_ids, group_ids, session);//user_ids, group_ids,
           toast.success('Task created successfully!');
+
+          // Upload files selected at creation time
+          if (Array.isArray(files) && files.length > 0 && newTask?.id) {
+            const uploaded = [];
+            for (const file of files) {
+              const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+              const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
+              const path = `tasks/${newTask.id}/${filename}`;
+              const { error: upErr } = await supabase.storage.from('filesmanagment').upload(path, file, { contentType: file.type || 'application/octet-stream' });
+              if (upErr) throw upErr;
+              const { data: signed } = await supabase.storage.from('filesmanagment').createSignedUrl(path, 60 * 60 * 24 * 7);
+              uploaded.push({
+                name: file.name,
+                path,
+                url: signed?.signedUrl || '',
+                size: file.size,
+                type: file.type || 'application/octet-stream',
+                uploaded_at: new Date().toISOString(),
+              });
+            }
+            try {
+              await addTaskFiles(newTask.id, uploaded, session);
+            } catch (e) {
+              console.error('[addTaskFiles after create] failed:', e);
+            }
+          }
           
           // Ajouter la nouvelle tâche à l'état local
           const taskWithAssignments = {
@@ -290,9 +400,9 @@ export default function ProjectDrawer({
       <aside
         className={`fixed top-0 bottom-0 right-0 z-50 h-full bg-white shadow-2xl will-change-transform transition-transform transition-opacity duration-300 ${open ? 'ease-out' : 'ease-in'}
         ${open ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
-        ${expanded ? 'left-[16rem] w-auto' : 'left-auto w-[600px]'}
+        ${expanded ? 'left-[16rem] w-auto' : 'left-auto w-[900px]'}
         flex flex-col`}
-        style={{ minWidth: 400 }}
+        style={{ minWidth: 500 }}
       >
         {/* Boutons overlay toujours visibles */}
         {open && (
@@ -320,7 +430,7 @@ export default function ProjectDrawer({
             </div>
           </div>
         )}
-        <div className="p-8 pt-12 flex-1 flex flex-col overflow-y-auto max-h-full relative">
+        <div className="p-6 pt-14 flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto max-h-full relative">
           {drawerBusy && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 rounded-lg">
               <div className="flex flex-col items-center">
@@ -334,12 +444,21 @@ export default function ProjectDrawer({
           )}
           {isAdmin ? (
             <form
-              onSubmit={editMode ? onUpdate : onSubmit}
-              className={`gap-8 w-full ${expanded ? 'grid grid-cols-2' : 'flex flex-col max-w-[800px] mx-auto'}`}
+              onSubmit={async (e) => {
+                if (editMode) return onUpdate(e);
+                e.preventDefault();
+                // include files in creation (do not pass SyntheticEvent)
+                try {
+                  await onSubmit({ filesPayload: newFiles });
+                } finally {
+                  setNewFiles([]);
+                }
+              }}
+              className={`contents`}
             >
-              {/* Colonne 1 */}
-              <div className="flex flex-col gap-4">
-                <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white col-span-2">
+              {/* Colonne gauche */}
+              <div className="flex flex-col gap-4 bg-white/5 rounded-xl p-4 border border-white/10">
+                <h2 className="text-2xl font-bold mb-1 text-white col-span-2">
                   {editMode ? 'Edit Project' : 'Create Project'}
                 </h2>
                 <input
@@ -348,7 +467,7 @@ export default function ProjectDrawer({
                   onChange={onChange}
                   placeholder="Title"
                   required
-                  className="px-4 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="px-4 py-2 rounded border border-gray-600 bg-[#18181b] text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                   disabled={loading}
                 />
                 <textarea
@@ -357,13 +476,13 @@ export default function ProjectDrawer({
                   onChange={onChange}
                   placeholder="Description"
                   required
-                  className="px-4 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-                  rows={2}
+                  className="px-4 py-2 rounded border border-gray-600 bg-[#18181b] text-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                  rows={4}
                   disabled={loading}
                 />
                 {/* Progression du projet */}
                 <label className="block text-sm font-medium text-white mb-1">Project Progress</label>
-                <div className="flex items-center gap-4 mb-2">
+                <div className="flex items-center gap-4">
                   <select
                     value={form.progress || 0}
                     onChange={async (e) => {
@@ -392,7 +511,7 @@ export default function ProjectDrawer({
                   </div>
                 </div>
               </div>
-              {/* Colonne 2 */}
+              {/* Colonne droite */}
               <div className="flex flex-col gap-4">
                 {/* Assignation moderne utilisateurs & groupes */}
                 <ModernAssigneeSelector
@@ -429,9 +548,14 @@ export default function ProjectDrawer({
                     className="w-1/2 px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
                   />
                 </div>
+                {editMode && (form?.id || form?._id) && (
+                  <div>
+                    <FileManager ownerType="project" ownerId={form.id || form._id} title="Files" />
+                  </div>
+                )}
               </div>
               {/* Boutons en bas, sur toute la largeur */}
-              <div className={`col-span-2 flex gap-4 mt-6 ${expanded ? 'justify-end' : ''}`}>
+              <div className={`col-span-2 flex gap-4 mt-2 ${expanded ? 'justify-end' : ''}`}>
                 {error && (
                   <div className="col-span-2 bg-red-500 text-white px-4 py-3 rounded-lg mb-4 animate-pulse">
                     <div className="flex items-center gap-2">
@@ -528,27 +652,31 @@ export default function ProjectDrawer({
                             </div>
                             {/* Affichage des assignés - uniquement les utilisateurs assignés directement */}
                             {(task.user_ids || []).length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                <span className="text-xs text-gray-400">Users:</span>
-                                {(task.user_ids || []).map(userId => (
-                                  <span key={userId} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
-                                    {users.find(u => u.id === userId)?.email || `User not found`}
-                                  </span>
-                                ))}
+                              <div className="mt-2">
+                                <span className="text-xs text-gray-400 block mb-1">Users:</span>
+                                <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1 border border-gray-700 rounded p-1 bg-[#1b1b22]">
+                                  {(task.user_ids || []).map(userId => (
+                                    <span key={userId} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+                                      {users.find(u => u.id === userId)?.email || `User not found`}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
                             )}
                             {/* Affichage des groupes */}
                             {(task.groups || task.group_ids || []).length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                <span className="text-xs text-gray-400">Groups:</span>
-                                {(task.groups || task.group_ids || []).map(groupId => {
-                                  const group = groups.find(g => g.id === groupId || g.id === parseInt(groupId));
-                                  return (
-                                    <span key={groupId} className="text-xs bg-green-600 text-white px-2 py-1 rounded">
-                                      {group ? group.name : `Group ${groupId}`}
-                                    </span>
-                                  );
-                                })}
+                              <div className="mt-2">
+                                <span className="text-xs text-gray-400 block mb-1">Groups:</span>
+                                <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1 border border-gray-700 rounded p-1 bg-[#1b1b22]">
+                                  {(task.groups || task.group_ids || []).map(groupId => {
+                                    const group = groups.find(g => g.id === groupId || g.id === parseInt(groupId));
+                                    return (
+                                      <span key={groupId} className="text-xs bg-green-600 text-white px-2 py-1 rounded">
+                                        {group ? group.name : `Group ${groupId}`}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -615,6 +743,17 @@ export default function ProjectDrawer({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                   </svg>
                                 </button>
+                                {task.id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setFilesTaskOpenId(prev => prev === task.id ? null : task.id)}
+                                    className="p-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200 flex items-center justify-center"
+                                    disabled={loading}
+                                    title="Manage files"
+                                  >
+                                    📎
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteTask(task, idx)}
@@ -629,12 +768,20 @@ export default function ProjectDrawer({
                               </div>
                             )}
                           </div>
+                          {task.id && filesTaskOpenId === task.id && (
+                            <div className="mt-3">
+                              <FileManager ownerType="task" ownerId={task.id} />
+                            </div>
+                          )}
                         </div>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
+
+              {/* Files Section */}
+              
             </form>
           ) : (
             <div className="max-w-[800px] mx-auto">
@@ -695,6 +842,13 @@ export default function ProjectDrawer({
                   </ul>
                 )}
               </div>
+
+              {/* Files Section (visible to all roles) */}
+              {editMode && (form?.id || form?._id) && (
+                <div className="mt-8">
+                  <FileManager ownerType="project" ownerId={form.id || form._id} />
+                </div>
+              )}
             </div>
           )}
         </div>

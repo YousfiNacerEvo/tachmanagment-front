@@ -7,16 +7,20 @@ import { login } from '../../lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, setUser, loading, error, setError } = useAuth();
+  const { user, setUser, loading, error, setError, role } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (loading) return;
+    if (!user) return;
+    if (role === 'member' || role === 'guest') {
+      router.replace('/dashboard/my-work');
+    } else if (role === 'admin') {
       router.replace('/dashboard/projects');
     }
-  }, [user, loading, router]);
+  }, [user, role, loading, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,8 +34,8 @@ export default function LoginPage() {
         setError(error.message);
       }
     } else {
+      // Let the effect above redirect once the role is loaded by AuthContext
       setUser(loggedInUser);
-      router.replace('/dashboard/projects');
     }
     setFormLoading(false);
   };

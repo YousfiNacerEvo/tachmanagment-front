@@ -1,12 +1,14 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { getUsers } from '../lib/api';
+import { getUsers, addTaskFiles } from '../lib/api';
 import { toast } from 'react-hot-toast';
 import GroupSelector from './GroupSelector';
 import AssigneeSelector from './AssigneeSelector';
 import ModernAssigneeSelector from './ModernAssigneeSelector';
 import { getGroupMembers, getGroupsByTask, getGroupsByProject } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import FileManager from './FileManager';
+import { supabase } from '../lib/supabase';
 
 export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, loading = false, isAdmin = false }) {
   const { session } = useAuth(); 
@@ -18,10 +20,14 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
     deadline: '',
     user_ids: [],
     group_ids: [], // Add group assignment
+    files: [],
+    progress: 0,
   });
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
   const [projectAssignees, setProjectAssignees] = useState({ users: [], groups: [] });
+  const [uploading, setUploading] = useState(false);
+  const [fileReloadTick, setFileReloadTick] = useState(0);
 
   useEffect(() => {
     // Charger les utilisateurs
@@ -44,6 +50,8 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
         // Ne pas injecter les membres de groupes: garder uniquement les utilisateurs explicitement assignés
         user_ids: task.user_ids || [],
         group_ids: task.group_ids || task.groups || [], // Load assigned groups
+        files: [],
+        progress: typeof task.progress === 'number' ? task.progress : 0,
       });
       // Charger les assignés du projet parent si project_id existe
       if (task.project_id) {
@@ -64,6 +72,8 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
         deadline: '',
         user_ids: [],
         group_ids: [],
+        files: [],
+        progress: 0,
       });
       setProjectAssignees({ users: [], groups: [] });
     }
@@ -136,6 +146,46 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
       await onSubmit(form);
     } catch (err) {
       setError(err.message || 'Failed to save task');
+    }
+  };
+
+  // Quick photo upload for edit mode (admin)
+  const handlePhotoFiles = async (fileList) => {
+    if (!task?.id || !fileList || fileList.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded = [];
+      for (const file of fileList) {
+        if (!file.type || !file.type.startsWith('image/')) continue;
+        const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+        const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
+        const path = `tasks/${task.id}/${filename}`;
+        const { error: upErr } = await supabase.storage
+          .from('filesmanagment')
+          .upload(path, file, { contentType: file.type || 'image/jpeg' });
+        if (upErr) throw upErr;
+        const { data: signed } = await supabase.storage
+          .from('filesmanagment')
+          .createSignedUrl(path, 60 * 60 * 24 * 7);
+        uploaded.push({
+          name: file.name,
+          path,
+          url: signed?.signedUrl || '',
+          size: file.size,
+          type: file.type || 'image/jpeg',
+          uploaded_at: new Date().toISOString(),
+        });
+      }
+      if (uploaded.length > 0) {
+        await addTaskFiles(task.id, uploaded, session);
+        setFileReloadTick(t => t + 1); // force FileManager remount/reload
+        try { window.dispatchEvent(new CustomEvent('tach:dataUpdated')); } catch (_) {}
+        toast.success('Photos uploaded');
+      }
+    } catch (e) {
+      toast.error(e.message || 'Failed to upload photos');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -265,6 +315,70 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
           disabled={loading || !isAdmin}
           label="Assign to"
         />
+
+        {/* Files (optional during creation) */}
+        {!task && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Files (optional)
+            </label>
+            <input
+              type="file"
+              multiple
+              onChange={(e) => setForm(prev => ({ ...prev, files: Array.from(e.target.files || []) }))}
+              className="block w-full text-sm text-gray-900"
+              disabled={loading}
+            />
+            {form.files && form.files.length > 0 && (
+              <div className="text-xs text-gray-500 mt-1">{form.files.length} file(s) selected</div>
+            )}
+          </div>
+        )}
+
+        {/* Progress control (selector only) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Progress</label>
+          <select
+            value={form.progress || 0}
+            onChange={(e) => setForm(prev => ({ ...prev, progress: Number(e.target.value) }))}
+            className={`w-28 px-2 py-2 rounded border border-gray-300 bg-white text-gray-900 ${!isAdmin ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            disabled={loading || !isAdmin}
+          >
+            <option value={0}>0%</option>
+            <option value={25}>25%</option>
+            <option value={50}>50%</option>
+            <option value={75}>75%</option>
+            <option value={100}>100%</option>
+          </select>
+          <div className="w-full h-2 bg-gray-200 rounded mt-2">
+            <div className="h-2 bg-blue-600 rounded" style={{ width: `${form.progress || 0}%` }} />
+          </div>
+        </div>
+
+        {/* Edit mode: admin photo upload + file manager (placed above action buttons) */}
+        {task && isAdmin && (
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Add photos</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  handlePhotoFiles(files);
+                  e.target.value = '';
+                }}
+                className="block text-sm"
+                disabled={uploading}
+              />
+              {uploading && <span className="text-xs text-gray-500">Uploading...</span>}
+            </div>
+            <div className="mt-4">
+              <FileManager key={`fm-${task.id}-${fileReloadTick}`} ownerType="task" ownerId={task.id} />
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3 pt-4">
           <button

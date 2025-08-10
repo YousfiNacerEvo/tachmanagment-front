@@ -244,10 +244,7 @@ function MyWorkContent() {
                     <FolderOpen className="text-blue-600" size={24} />
                     My Projects
                   </h2>
-                  <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200">
-                    <Plus size={16} />
-                    New Project
-                  </button>
+                 
                 </div>
                 
                 {projects.length === 0 ? (
@@ -304,10 +301,7 @@ function MyWorkContent() {
                     <CheckSquare className="text-green-600" size={24} />
                     My Tasks
                   </h2>
-                  <button className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200">
-                    <Plus size={16} />
-                    New Task
-                  </button>
+                  
                 </div>
                 
                 {/* Filters */}
@@ -520,6 +514,7 @@ function MyWorkContent() {
             setEditingTask(null);
           }}
           onUpdate={handleTaskUpdate}
+          isAdmin={true}
         />
       </div>
     </div>

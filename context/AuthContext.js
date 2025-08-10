@@ -25,7 +25,13 @@ export function AuthProvider({ children }) {
         return null;
       }
       
-      return data?.role || null;
+      const r = data?.role || null;
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('tach:lastRole', r || '');
+        }
+      } catch (_) {}
+      return r;
     } catch (err) {
       console.error('Error fetching user role:', err);
       return null;
@@ -51,6 +57,9 @@ export function AuthProvider({ children }) {
             if (mounted) {
               setRole(userRole);
             }
+          } else {
+            // keep local role key in sync
+            try { if (typeof window !== 'undefined') window.localStorage.removeItem('tach:lastRole'); } catch (_) {}
           }
         }
       } catch (err) {
@@ -82,6 +91,7 @@ export function AuthProvider({ children }) {
             }
           } else {
             setRole(null);
+            try { if (typeof window !== 'undefined') window.localStorage.removeItem('tach:lastRole'); } catch (_) {}
           }
         }
       }
@@ -89,7 +99,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       mounted = false;
-      subscription?.unsubscribe();
+      try { subscription?.unsubscribe(); } catch (_) {}
     };
   }, []);
 

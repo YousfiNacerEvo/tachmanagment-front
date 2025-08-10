@@ -1,7 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { updateTask } from '../lib/api';
+import { updateTask, addTaskFiles } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import FileManager from './FileManager';
+import { supabase } from '../lib/supabase';
 
 export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin = false }) {
   const { session } = useAuth();
@@ -11,10 +13,13 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
     status: 'to do',
     priority: 'medium',
     deadline: '',
-    project_id: null
+    project_id: null,
+    progress: 0
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [newPhotos, setNewPhotos] = useState([]);
 
   useEffect(() => {
     if (task) {
@@ -24,7 +29,8 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
         status: task.status || 'to do',
         priority: task.priority || 'medium',
         deadline: task.deadline ? task.deadline.split('T')[0] : '',
-        project_id: task.project_id || null
+        project_id: task.project_id || null,
+        progress: typeof task.progress === 'number' ? task.progress : 0
       });
     }
   }, [task]);
@@ -61,11 +67,50 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
     }
   };
 
+  const handlePhotoFiles = async (fileList) => {
+    if (!task?.id || !fileList || fileList.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded = [];
+      for (const file of fileList) {
+        if (!file.type || !file.type.startsWith('image/')) continue;
+        const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+        const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
+        const path = `tasks/${task.id}/${filename}`;
+        const { error: upErr } = await supabase.storage
+          .from('filesmanagment')
+          .upload(path, file, { contentType: file.type || 'image/jpeg' });
+        if (upErr) throw upErr;
+        const { data: signed } = await supabase.storage
+          .from('filesmanagment')
+          .createSignedUrl(path, 60 * 60 * 24 * 7);
+        uploaded.push({
+          name: file.name,
+          path,
+          url: signed?.signedUrl || '',
+          size: file.size,
+          type: file.type || 'image/jpeg',
+          uploaded_at: new Date().toISOString(),
+        });
+      }
+      if (uploaded.length > 0) {
+        await addTaskFiles(task.id, uploaded, session);
+        try { window.dispatchEvent(new CustomEvent('tach:dataUpdated')); } catch (_) {}
+      }
+      setNewPhotos([]);
+    } catch (e) {
+      setError(e.message || 'Failed to upload photos');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 max-w-md w-full shadow-xl relative">
+      <div className="bg-white border border-gray-200 rounded-2xl p-0 max-w-2xl w-full shadow-xl relative">
+        <div className="max-h-[85vh] overflow-y-auto p-6">
         <button
           onClick={onClose}
           className="absolute top-2 right-2 text-gray-400 hover:text-red-400 text-xl"
@@ -149,6 +194,31 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
               </select>
             </div>
           </div>
+
+          {/* Quick photo upload (admin) - placed above Progress */}
+          
+
+          {/* Progress (selector only) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Progress</label>
+            <select
+              value={form.progress || 0}
+              onChange={(e) => setForm(prev => ({ ...prev, progress: Number(e.target.value) }))}
+              className={`w-28 bg-white border border-gray-300 rounded px-2 py-2 text-gray-900 focus:border-blue-500 focus:outline-none ${
+                !isAdmin ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
+              disabled={!isAdmin}
+            >
+              <option value={0}>0%</option>
+              <option value={25}>25%</option>
+              <option value={50}>50%</option>
+              <option value={75}>75%</option>
+              <option value={100}>100%</option>
+            </select>
+            <div className="w-full h-2 bg-gray-200 rounded mt-2">
+              <div className="h-2 bg-blue-600 rounded" style={{ width: `${form.progress || 0}%` }} />
+            </div>
+          </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -164,7 +234,11 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
               disabled={!isAdmin}
             />
           </div>
-          
+          {isAdmin && task?.id && (
+            <div className="mt-6">
+              <FileManager ownerType="task" ownerId={task.id} />
+            </div>
+          )}
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -182,6 +256,10 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
             </button>
           </div>
         </form>
+
+          {/* Files (admin can manage full list) */}
+          
+        </div>
       </div>
     </div>
   );

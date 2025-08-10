@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser, assignGroupToProject, unassignGroupFromProject, getGroupsByProject, getGroupMembers } from '../../../lib/api';
+import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser, assignGroupToProject, unassignGroupFromProject, getGroupsByProject, getGroupMembers, addProjectFiles, notifyProjectCreated } from '../../../lib/api';
+import { supabase } from '../../../lib/supabase';
 import ProjectDrawer from '../../../components/ProjectDrawer';
 import ProjectHeaderTabs from '../../../components/ProjectHeaderTabs';
 import ProjectTable from '../../../components/ProjectTable';
@@ -40,6 +41,7 @@ function ProjectsContent() {
     group_ids: [],
   });
   const [formTasks, setFormTasks] = useState([]); // <-- gestion des tâches à la création
+  const [formFiles, setFormFiles] = useState([]); // Files selected during creation (File objects)
   const [formError, setFormError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [viewMode, setViewMode] = useState('table');
@@ -76,6 +78,12 @@ function ProjectsContent() {
   }, [isAdmin, user, session]);
 
   useEffect(() => {
+    // redirect members/guests away from admin-only projects page
+    if (!authLoading && !isAdmin) {
+      // members/guests should not access this page
+      window?.location?.replace('/dashboard/my-work');
+      return;
+    }
     // Fonction de nettoyage pour éviter les effets de bord
     let isMounted = true;
 
@@ -185,7 +193,9 @@ function ProjectsContent() {
   };
 
   const handleCreate = async e => {
-    e.preventDefault();
+    // e may be an event or a custom object with filesPayload
+    if (typeof e?.preventDefault === 'function') e.preventDefault();
+    const creationFiles = Array.isArray(e?.filesPayload) ? e.filesPayload : formFiles;
    
     
     // Empêcher de relancer si on a déjà eu un timeout
@@ -229,6 +239,30 @@ function ProjectsContent() {
       const createdProject = await createProject(form, session);
       console.log('✅ Projet créé:', createdProject);
 
+      // 3.a Upload files selected during creation
+      if (creationFiles && creationFiles.length > 0) {
+        const projectId = createdProject.id || createdProject._id;
+        const uploaded = [];
+        for (const file of creationFiles) {
+          const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+          const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
+          const path = `projects/${projectId}/${filename}`;
+          const { error: upErr } = await supabase.storage.from('filesmanagment').upload(path, file, { contentType: file.type || 'application/octet-stream' });
+          if (upErr) throw upErr;
+          const { data: signed } = await supabase.storage.from('filesmanagment').createSignedUrl(path, 60 * 60 * 24 * 7);
+          uploaded.push({
+            name: file.name,
+            path,
+            url: signed?.signedUrl || '',
+            size: file.size,
+            type: file.type || 'application/octet-stream',
+            uploaded_at: new Date().toISOString(),
+          });
+        }
+        // Persist in DB
+        await addProjectFiles(projectId, uploaded, session);
+      }
+
       // 3. Assignation des groupes
       if (form.group_ids && form.group_ids.length > 0) {
         console.log('🔗 Assignation des groupes...');
@@ -249,7 +283,12 @@ function ProjectsContent() {
         await Promise.all(formTasks.map(async (task) => {
           try {
             const taskWithoutProgress = { ...task };
-            await createTask({ ...taskWithoutProgress, project_id: createdProject.id || createdProject._id },user_ids, group_ids,session);
+            await createTask(
+              { ...taskWithoutProgress, project_id: createdProject.id || createdProject._id },
+              task.user_ids || [],
+              task.group_ids || task.groups || [],
+              session
+            );
           } catch (err) {
             console.error('Erreur lors de la création d\'une tâche associée :', err);
             toast.error('Error while creating an associated task: ' + (err.message || err));
@@ -257,6 +296,13 @@ function ProjectsContent() {
         }));
       }
       
+      // 5. Only now, send notifications
+      try {
+        await notifyProjectCreated(createdProject.id || createdProject._id, { user_ids: form.user_ids, name: createdProject.title }, session);
+      } catch (e) {
+        console.warn('Notify project failed:', e);
+      }
+
       console.log('🎉 SUCCÈS: Projet créé avec succès');
       // Ajouter le nouveau projet à l'état local
       const projectWithAssignments = {
@@ -268,6 +314,7 @@ function ProjectsContent() {
       
       setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [], group_ids: [] });
       setFormTasks([]);
+      setFormFiles([]);
       setDrawerOpen(false);
       setFormError(null);
       setTimeoutError(null);

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUser } from '../hooks/useUser';
 import { logout } from '../lib/auth';
+import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -24,6 +25,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { isAdmin, user, loading } = useUser();
   const router = useRouter();
+  const { setUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Interface différente selon le rôle
@@ -50,7 +52,10 @@ export default function Sidebar() {
   }
 
   const handleLogout = async () => {
-    await logout();
+    // Optimistic clear of local state to avoid UI flicker/loops
+    try { setUser(null); } catch (_) {}
+    try { window?.localStorage?.removeItem('tach:lastRole'); } catch (_) {}
+    try { await logout(); } catch (_) {}
     router.replace('/login');
   };
 
@@ -74,7 +79,7 @@ export default function Sidebar() {
   const SidebarContent = () => (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+      <div className="flex items-center justify-between h-16 px-7 border-b border-gray-200">
         <Link href="/dashboard" className="text-xl font-bold text-gray-900">
           MyApp
         </Link>
@@ -87,7 +92,7 @@ export default function Sidebar() {
       </div>
       
       {/* Navigation */}
-      <nav className="flex-1 flex flex-col gap-1 p-4">
+      <nav className="flex-1 flex flex-col gap-2 p-5">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
@@ -99,7 +104,7 @@ export default function Sidebar() {
             >
               <Link
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 group ${
+                className={`flex items-center gap-4 px-5 py-3.5 rounded-xl font-medium transition-all duration-200 group ${
                   isActive 
                     ? 'bg-blue-50 text-blue-700 border border-blue-200' 
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -121,16 +126,16 @@ export default function Sidebar() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 border-t border-gray-200"
+          className="p-6 border-t border-gray-200"
         >
-          <div className="mb-4 p-4 bg-gray-50 rounded-xl">
+          <div className="mb-5 p-5 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                 <User size={16} className="text-blue-600" />
               </div>
               <div>
                 <div className="text-sm text-gray-600">Logged in as</div>
-                <div className="text-gray-900 font-medium truncate">{user.email}</div>
+                <div className="text-gray-900 font-medium truncate break-all max-w-[150px]">{user.email}</div>
               </div>
             </div>
             <div className="text-xs text-blue-600 font-medium">
@@ -142,7 +147,7 @@ export default function Sidebar() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleLogout}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
+            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3.5 px-5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
           >
             <LogOut size={16} />
             Sign Out
@@ -183,7 +188,7 @@ export default function Sidebar() {
             animate={{ x: 0 }}
             exit={{ x: -300 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="lg:hidden fixed left-0 top-0 h-full bg-white border-r border-gray-200 flex flex-col w-80 z-50"
+            className="lg:hidden fixed left-0 top-0 h-full bg-white border-r border-gray-200 flex flex-col w-80 z-50 overflow-y-auto"
           >
             <SidebarContent />
           </motion.aside>
@@ -191,7 +196,7 @@ export default function Sidebar() {
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 min-w-[200px] bg-white border-r border-gray-200 flex-col overflow-y-hidden z-30">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-72 min-w-[280px] bg-white border-r border-gray-200 flex-col overflow-y-auto z-30">
         <SidebarContent />
       </aside>
     </>

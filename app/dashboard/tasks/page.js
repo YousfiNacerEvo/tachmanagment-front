@@ -14,6 +14,7 @@ import {
   getProjectTasksWithAssignees,
   getGroupsByTask
 } from "../../../lib/api";
+import { supabase } from "../../../lib/supabase";
 import StandaloneTaskForm from "../../../components/StandaloneTaskForm";
 import SearchAndFilter from "../../../components/SearchAndFilter";
 import { useUser } from "../../../hooks/useUser";
@@ -205,6 +206,30 @@ function TasksContent() {
         throw new Error('Failed to create task: No ID returned');
       }
       
+      // Upload any selected files during creation
+      if (Array.isArray(taskData.files) && taskData.files.length > 0) {
+        const uploaded = [];
+        for (const file of taskData.files) {
+          const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+          const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
+          const path = `tasks/${newTask.id}/${filename}`;
+          const { error: upErr } = await supabase.storage.from('filesmanagment').upload(path, file, { contentType: file.type || 'application/octet-stream' });
+          if (upErr) throw upErr;
+          const { data: signed } = await supabase.storage.from('filesmanagment').createSignedUrl(path, 60 * 60 * 24 * 7);
+          uploaded.push({
+            name: file.name,
+            path,
+            url: signed?.signedUrl || '',
+            size: file.size,
+            type: file.type || 'application/octet-stream',
+            uploaded_at: new Date().toISOString(),
+          });
+        }
+        // Persist to DB through our API
+        const { addTaskFiles } = await import("../../../lib/api");
+        await addTaskFiles(newTask.id, uploaded, session);
+      }
+
       console.log('Task created successfully:', newTask);
       
       // Ajouter la nouvelle tâche à l'état local
