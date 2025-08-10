@@ -257,13 +257,12 @@ export default function ProjectDrawer({
 
   // Ajout ou édition d'une tâche en mode édition : envoie à l'API puis recharge la liste
   const handleAddTask = async (task) => {
-    console.log('handleAddTask called with task:', task);
+    
     if (editMode && form && (form.id || form._id)) {
       try {
         // Extraire user_ids et group_ids de l'objet task
         const { user_ids, group_ids, files = [], ...taskData } = task;
-        console.log('Extracted user_ids:', user_ids, 'group_ids:', group_ids);
-        console.log('Task data to send:', taskData);
+      
         
         if (task.id) {
           console.log('Updating existing task:', task.id);
