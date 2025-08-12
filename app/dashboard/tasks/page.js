@@ -286,7 +286,7 @@ function TasksContent() {
   };
 
   const handleDeleteTask = async (task) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    if (!window.confirm('Are you sure you want to delete this task? Its files will be deleted.')) return;
     
     try {
       await deleteTask(task.id,session);

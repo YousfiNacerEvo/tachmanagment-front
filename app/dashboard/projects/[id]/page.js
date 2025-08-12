@@ -224,7 +224,7 @@ export default function ProjectDetailPage() {
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+    if (!confirm('Are you sure you want to delete this task? Its files will be deleted.')) return;
     
     try {
       await deleteTask(taskId,session);

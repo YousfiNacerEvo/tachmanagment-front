@@ -481,6 +481,9 @@ function ProjectsContent() {
       setFormLoading(false);
       return;
     }
+    if (!window.confirm('Are you sure you want to delete this project? All its tasks and files will be deleted.')) {
+      return;
+    }
     setFormLoading(true);
     try {
       await deleteProject(editId, session);

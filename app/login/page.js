@@ -13,14 +13,32 @@ export default function LoginPage() {
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
     if (!user) return;
     if (role === 'member' || role === 'guest') {
       router.replace('/dashboard/my-work');
-    } else if (role === 'admin') {
-      router.replace('/dashboard/projects');
+      return;
     }
-  }, [user, role, loading, router]);
+    if (role === 'admin') {
+      router.replace('/dashboard/projects');
+      return;
+    }
+    // Fallback: if role is not resolved shortly after login, use persisted role or a safe default
+    const timer = setTimeout(() => {
+      try {
+        const persisted = typeof window !== 'undefined' ? window.localStorage.getItem('tach:lastRole') : null;
+        if (persisted === 'member' || persisted === 'guest') {
+          router.replace('/dashboard/my-work');
+        } else if (persisted === 'admin') {
+          router.replace('/dashboard/projects');
+        } else {
+          router.replace('/dashboard/projects');
+        }
+      } catch (_) {
+        router.replace('/dashboard/projects');
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [user, role, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,7 +58,7 @@ export default function LoginPage() {
     setFormLoading(false);
   };
 
-  if (loading || formLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (formLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-[#f7f9fb]">

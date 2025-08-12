@@ -371,6 +371,7 @@ export default function ProjectDrawer({
   const handleDeleteTask = async (task, idx) => {
     if (editMode && form && (form.id || form._id) && task.id) {
       try {
+        if (!window.confirm('Are you sure you want to delete this task? Its files will be deleted.')) return;
         await deleteTask(task.id,session);
         
         // Supprimer directement de l'état local
