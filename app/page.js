@@ -36,5 +36,13 @@ export default function HomeRedirect() {
     }
   }, [user, role, loading, router]);
 
+  // Hard fallback: if still here after 5s, push to a safe default to avoid infinite loading
+  useEffect(() => {
+    const id = setTimeout(() => {
+      router.replace('/dashboard/projects');
+    }, 5000);
+    return () => clearTimeout(id);
+  }, [router]);
+
   return <div>Loading...</div>;
 }

@@ -8,6 +8,7 @@ import ProjectTable from '../../../components/ProjectTable';
 import ProjectKanban from '../../../components/ProjectKanban';
 import SearchAndFilter from '../../../components/SearchAndFilter';
 import { useAuth } from '../../../context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
@@ -27,6 +28,7 @@ function StatusBadge({ status }) {
 
 function ProjectsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -80,7 +82,7 @@ function ProjectsContent() {
   useEffect(() => {
     // Redirect only when we are sure user is NOT admin
     if (!authLoading && isMember) {
-      window?.location?.replace('/dashboard/my-work');
+      router.replace('/dashboard/my-work');
       return;
     }
     // Fonction de nettoyage pour éviter les effets de bord
