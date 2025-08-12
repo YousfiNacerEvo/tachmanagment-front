@@ -1,6 +1,7 @@
 "use client"
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { getUserRole as getUserRoleFromApi } from '../lib/auth';
 
 const AuthContext = createContext();
 
@@ -10,30 +11,19 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fonction pour récupérer le rôle utilisateur directement depuis Supabase
+  // Récupérer le rôle via le backend (Bearer token) pour éviter problèmes RLS/clients
   const fetchUserRole = async (userId) => {
     if (!userId) return null;
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .single();
-      
-      if (error) {
-        console.error('Error fetching user role:', error);
-        return null;
-      }
-      
-      const r = data?.role || null;
+      const r = await getUserRoleFromApi(userId);
       try {
         if (typeof window !== 'undefined') {
           window.localStorage.setItem('tach:lastRole', r || '');
         }
       } catch (_) {}
-      return r;
+      return r || null;
     } catch (err) {
-      console.error('Error fetching user role:', err);
+      console.error('Error fetching user role (API):', err);
       return null;
     }
   };
