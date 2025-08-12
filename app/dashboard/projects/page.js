@@ -78,9 +78,8 @@ function ProjectsContent() {
   }, [isAdmin, user, session]);
 
   useEffect(() => {
-    // redirect members/guests away from admin-only projects page
-    if (!authLoading && !isAdmin) {
-      // members/guests should not access this page
+    // Redirect only when we are sure user is NOT admin
+    if (!authLoading && isMember) {
       window?.location?.replace('/dashboard/my-work');
       return;
     }
