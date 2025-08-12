@@ -134,7 +134,7 @@ export default function Sidebar() {
                 <User size={16} className="text-blue-600" />
               </div>
               <div>
-                <div className="text-sm text-gray-600">Logged in as</div>
+                <div className="text-sm text-gray-600">Logged in as suisisdsfj</div>
                 <div className="text-gray-900 font-medium truncate break-all max-w-[150px]">{user.email}</div>
               </div>
             </div>
