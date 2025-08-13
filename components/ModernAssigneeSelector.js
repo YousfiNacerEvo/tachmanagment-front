@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getUsers, getGroupsWithMembers, getGroupMembers } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,6 +20,7 @@ export default function ModernAssigneeSelector({
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [groupMembers, setGroupMembers] = useState({});
   const [error, setError] = useState(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     if (!session) return;
@@ -38,6 +39,25 @@ export default function ModernAssigneeSelector({
       setGroups([]);
     }
   }, [session, allowGroups]);
+
+  // Fermer le menu en cas de clic à l'extérieur
+  useEffect(() => {
+    if (!showMenu) return;
+    const handlePointerDown = (e) => {
+      try {
+        if (!containerRef.current) return;
+        if (!containerRef.current.contains(e.target)) {
+          setShowMenu(false);
+        }
+      } catch (_) {}
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, [showMenu]);
 
   // Filtrage pour l'autocomplete
   const filteredUsers = users.filter(u =>
@@ -116,7 +136,7 @@ export default function ModernAssigneeSelector({
   };
 
   return (
-    <div className="mb-4">
+    <div className="mb-4" ref={containerRef}>
       <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       
       {/* Message d'erreur */}

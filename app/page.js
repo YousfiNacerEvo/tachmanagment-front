@@ -21,19 +21,7 @@ export default function HomeRedirect() {
       router.replace('/dashboard/projects');
       return;
     }
-    // Fallback when role is not yet resolved
-    try {
-      const persisted = typeof window !== 'undefined' ? window.localStorage.getItem('tach:lastRole') : null;
-      if (persisted === 'member' || persisted === 'guest') {
-        router.replace('/dashboard/my-work');
-      } else if (persisted === 'admin') {
-        router.replace('/dashboard/projects');
-      } else {
-        router.replace('/dashboard/projects');
-      }
-    } catch (_) {
-      router.replace('/dashboard/projects');
-    }
+    // Wait until role resolved; don't use legacy non-namespaced key
   }, [user, role, loading, router]);
 
   // Hard fallback: if still here after 5s, push to a safe default to avoid infinite loading

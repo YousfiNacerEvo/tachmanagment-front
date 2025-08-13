@@ -90,6 +90,7 @@ function Section({
   onExportPDF,
   onExportExcel,
   onChartRefs,
+  statusColors,
 }) {
   const barRef = React.useRef(null);
   const pieRef = React.useRef(null);
@@ -117,7 +118,13 @@ function Section({
         {
           label: `${title} per day`,
           data: (timeSeries || []).map(p => p.count),
-          backgroundColor: 'rgba(59,130,246,0.6)',
+          backgroundColor: [
+            'rgba(34,197,94,0.7)', // green
+            'rgba(59,130,246,0.7)', // blue
+            'rgba(234,179,8,0.7)', // yellow
+            'rgba(239,68,68,0.7)', // red
+            'rgba(148,163,184,0.7)', // slate
+          ],
           borderColor: 'rgba(59,130,246,1)',
           borderWidth: 1,
         },
@@ -125,23 +132,32 @@ function Section({
     };
   }, [timeSeries, title]);
 
-  const pieData = useMemo(() => ({
-    labels: (byStatus || []).map(s => s.status),
-    datasets: [
-      {
-        label: `${title} status distribution`,
-        data: (byStatus || []).map(s => s.count),
-        backgroundColor: [
-          'rgba(34,197,94,0.7)', // green
-          'rgba(59,130,246,0.7)', // blue
-          'rgba(234,179,8,0.7)', // yellow
-          'rgba(239,68,68,0.7)', // red
-          'rgba(148,163,184,0.7)', // slate
-        ],
-        borderWidth: 0,
-      },
-    ],
-  }), [byStatus, title]);
+  const pieData = useMemo(() => {
+    const labels = (byStatus || []).map(s => s.status);
+    const normalize = (s) => (s || '').toString().replace(/_/g, ' ').toLowerCase();
+    const defaultPalette = {
+      'done': 'rgba(34,197,94,0.7)',
+      'in progress': 'rgba(59,130,246,0.7)',
+      'pending': 'rgba(234,179,8,0.7)',
+      'to do': 'rgba(148,163,184,0.7)',
+      'overdue': 'rgba(239,68,68,0.7)'
+    };
+    const bg = labels.map(l => {
+      const key = normalize(l);
+      return (statusColors && statusColors[key]) || defaultPalette[key] || 'rgba(148,163,184,0.7)';
+    });
+    return {
+      labels,
+      datasets: [
+        {
+          label: `${title} status distribution`,
+          data: (byStatus || []).map(s => s.count),
+          backgroundColor: bg,
+          borderWidth: 0,
+        },
+      ],
+    };
+  }, [byStatus, title, statusColors]);
 
   return (
     <section className="bg-[#0f172a] rounded-xl p-4 md:p-6 shadow border border-[#1e293b]">
@@ -266,9 +282,9 @@ export default function ReportsPage() {
   const projectsTimeSeriesForBar = useMemo(() => {
     if (projectsData.timeSeriesByStatus?.labels) {
       const colors = {
-        pending: 'rgba(234,179,8,0.7)',
-        in_progress: 'rgba(59,130,246,0.7)',
-        done: 'rgba(34,197,94,0.7)'
+        pending: 'rgba(234,179,8,0.7)', // yellow
+        in_progress: 'rgba(59,130,246,0.7)', // blue
+        done: 'rgba(34,197,94,0.7)' // green
       };
       return {
         labels: projectsData.timeSeriesByStatus.labels,
@@ -285,17 +301,17 @@ export default function ReportsPage() {
   const tasksTimeSeriesForBar = useMemo(() => {
     if (tasksData.timeSeriesByStatus?.labels) {
       const colors = {
-        'to do': 'rgba(148,163,184,0.7)',
-        'in progress': 'rgba(59,130,246,0.7)',
-        done: 'rgba(34,197,94,0.7)',
-        overdue: 'rgba(239,68,68,0.7)'
+        'to do': 'rgba(148,163,184,0.7)', // slate
+        'in progress': 'rgba(59,130,246,0.7)', // blue
+        'done': 'rgba(34,197,94,0.7)', // green
+        'overdue': 'rgba(239,68,68,0.7)' // red
       };
       return {
         labels: tasksData.timeSeriesByStatus.labels,
         datasets: (tasksData.timeSeriesByStatus.datasets || []).map(ds => ({
           label: ds.status,
           data: ds.counts,
-          backgroundColor: colors[ds.status] || 'rgba(148,163,184,0.5)'
+          backgroundColor: colors[ds.status] 
         }))
       };
     }
@@ -383,6 +399,7 @@ export default function ReportsPage() {
           onExportPDF={handleExportProjectsPDF}
           onExportExcel={handleExportProjectsExcel}
           onChartRefs={setProjectsChartRefs}
+          statusColors={{ 'pending': 'rgba(234,179,8,0.7)', 'in progress': 'rgba(59,130,246,0.7)', 'done': 'rgba(34,197,94,0.7)' }}
         />
         <Section
           title="Tasks"
@@ -392,6 +409,7 @@ export default function ReportsPage() {
           onExportPDF={handleExportTasksPDF}
           onExportExcel={handleExportTasksExcel}
           onChartRefs={setTasksChartRefs}
+          statusColors={{ 'to do': 'rgba(148,163,184,0.7)', 'in progress': 'rgba(59,130,246,0.7)', 'done': 'rgba(34,197,94,0.7)', 'overdue': 'rgba(239,68,68,0.7)' }}
         />
       </div>
     </div>

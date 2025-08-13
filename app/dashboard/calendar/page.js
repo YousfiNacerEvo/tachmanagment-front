@@ -61,7 +61,7 @@ export default function CalendarPage() {
       setEvents([...projectEvents, ...taskEvents]);
       setError(null);
     } catch (err) {
-      setError("Erreur lors du chargement des données");
+      setError("Erreur when loading please refresh");
     } finally {
       setLoading(false);
     }
@@ -191,7 +191,7 @@ export default function CalendarPage() {
         </div>
         {/* End legend */}
         {loading ? (
-          <div className="text-gray-400 text-center py-10">Chargement...</div>
+          <div className="text-gray-400 text-center py-10">Loading...</div>
         ) : error ? (
           <div className="text-red-400 text-center py-10">{error}</div>
         ) : (

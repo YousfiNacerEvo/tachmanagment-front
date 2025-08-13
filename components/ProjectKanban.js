@@ -34,12 +34,12 @@ function DroppableColumn({ id, children, label, onNewProject, projectIds }) {
     <div
       ref={setNodeRef}
       className="min-w-[260px] w-full max-w-xs flex flex-col bg-[#232329] rounded-lg p-4 shadow-md"
-      style={{ height: '100%', marginBottom: 16, border: '1px solid #444', overflowY: 'auto', marginRight: 24 }}
+      style={{ height: '100%', maxHeight: '100%', marginBottom: 16, border: '1px solid #444', marginRight: 24 }}
     >
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-lg font-bold text-white">{label}</h4>
       </div>
-      <div className="flex-1 flex flex-col gap-2 justify-start">
+      <div className="flex-1 flex flex-col gap-2 justify-start" style={{ overflowY: 'auto', minHeight: 0 }}>
         {children}
       </div>
     </div>
@@ -100,7 +100,7 @@ export default function ProjectKanban({ projects, onNewProject, onEdit, onStatus
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-8 overflow-x-auto pb-2 items-start">
+      <div className="flex gap-8 overflow-x-auto pb-2 items-start" style={{ height: '100%' }}>
         {STATUS_COLUMNS.map((col) => {
           const colProjects = items.filter(p => p.status === col.value);
           const colIds = colProjects.map(p => p.id);

@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { getUsers, createUser, deleteUser } from "../../../lib/api";
+import { getUsers, createUser, deleteUser, updateUserRole } from "../../../lib/api";
 import AddUserForm from "../../../components/AddUserForm";
 import { useUser } from "../../../hooks/useUser";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ export default function UsersPage() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [roleUpdating, setRoleUpdating] = useState({});
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -47,6 +48,21 @@ export default function UsersPage() {
       fetchUsers();
     } catch (err) {
       setError("Failed to delete user");
+    }
+  };
+
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      setRoleUpdating(prev => ({ ...prev, [userId]: true }));
+      setError(null);
+      setSuccess(null);
+      await updateUserRole(userId, newRole, session);
+      setUsers(prev => prev.map(u => (u.id === userId ? { ...u, role: newRole } : u)));
+      setSuccess('Role updated successfully');
+    } catch (err) {
+      setError(err.message || 'Failed to update role');
+    } finally {
+      setRoleUpdating(prev => ({ ...prev, [userId]: false }));
     }
   };
 
@@ -108,12 +124,24 @@ export default function UsersPage() {
                       Role: <span className={`font-medium ${getRoleColor(user.role)}`}>{user.role}</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete(user.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                      value={user.role}
+                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                      disabled={!!roleUpdating[user.id]}
+                    >
+                      <option value="admin">admin</option>
+                      <option value="member">member</option>
+                      <option value="guest">guest</option>
+                    </select>
+                    <button
+                      onClick={() => handleDelete(user.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -622,7 +622,7 @@ function ProjectsContent() {
             <h2 className="text-2xl font-bold text-white">Projects Kanban</h2>
             <span className="ml-2 text-gray-400">({filteredAndSortedProjects.length} projects)</span>
           </div>
-          <div style={{ height: 'calc(100vh - 60px)', display: 'flex', alignItems: 'flex-start', overflow: 'hidden' }}>
+          <div style={{ height: 'calc(100vh - 160px)', display: 'flex', alignItems: 'flex-start', overflow: 'hidden' }}>
             <ProjectKanban 
               projects={filteredAndSortedProjects} 
               onNewProject={null}

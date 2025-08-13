@@ -514,14 +514,7 @@ export default function ProjectDrawer({
               {/* Colonne droite */}
               <div className="flex flex-col gap-4">
                 {/* Assignation moderne utilisateurs & groupes */}
-                <ModernAssigneeSelector
-                  assignedUsers={form.user_ids || []}
-                  assignedGroups={form.group_ids || []}
-                  onChangeUsers={user_ids => onChange({ target: { name: 'user_ids', value: user_ids } })}
-                  onChangeGroups={group_ids => onChange({ target: { name: 'group_ids', value: group_ids } })}
-                  disabled={loading}
-                  label="Assign to"
-                />
+                
                 <select
                   name="status"
                   value={form.status}
@@ -548,9 +541,67 @@ export default function ProjectDrawer({
                     className="w-1/2 px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
                   />
                 </div>
-                {editMode && (form?.id || form?._id) && (
+                <ModernAssigneeSelector
+                  assignedUsers={form.user_ids || []}
+                  assignedGroups={form.group_ids || []}
+                  onChangeUsers={user_ids => onChange({ target: { name: 'user_ids', value: user_ids } })}
+                  onChangeGroups={group_ids => onChange({ target: { name: 'group_ids', value: group_ids } })}
+                  disabled={loading}
+                  label="Assign to"
+                />
+                {/* Project files handling */}
+                {editMode && (form?.id || form?._id) ? (
                   <div>
                     <FileManager ownerType="project" ownerId={form.id || form._id} title="Files" />
+                  </div>
+                ) : (
+                  <div className="bg-[#18181b] border border-gray-700 rounded-lg p-3">
+                    <label className="block text-sm font-medium text-white mb-2">Project files (uploaded after creation)</label>
+                    <div className="flex items-center gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={openCreateFilePicker}
+                        className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+                        disabled={loading}
+                      >
+                        Select files
+                      </button>
+                      <input
+                        ref={createFilesInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length > 0) {
+                            setNewFiles(prev => [...prev, ...files]);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                      {newFiles.length > 0 && (
+                        <span className="text-xs text-gray-400">{newFiles.length} file(s) selected</span>
+                      )}
+                    </div>
+                    {newFiles.length > 0 && (
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {newFiles.map((f, i) => (
+                          <li key={`${f.name}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-white text-xs flex items-center justify-between">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <div className="truncate" title={f.name}>{f.name}</div>
+                              <div className="text-[10px] text-gray-400">{(f.size/1024).toFixed(1)} KB</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setNewFiles(prev => prev.filter((_, idx) => idx !== i))}
+                              className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-[10px]"
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
               </div>

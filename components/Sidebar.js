@@ -23,7 +23,7 @@ import {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { isAdmin, user, loading } = useUser();
+  const { isAdmin, user, loading, role } = useUser();
   const router = useRouter();
   const { setUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -54,13 +54,19 @@ export default function Sidebar() {
   const handleLogout = async () => {
     // Optimistic clear of local state to avoid UI flicker/loops
     try { setUser(null); } catch (_) {}
-    try { window?.localStorage?.removeItem('tach:lastRole'); } catch (_) {}
+    try {
+      if (typeof window !== 'undefined') {
+        Object.keys(window.localStorage)
+          .filter(k => k.startsWith('tach:lastRole:') || k === 'tach:lastRole')
+          .forEach(k => window.localStorage.removeItem(k));
+      }
+    } catch (_) {}
     try { await logout(); } catch (_) {}
     router.replace('/login');
   };
 
-  // Afficher un loader pendant le chargement initial
-  if (loading) {
+  // Afficher un loader pendant le chargement initial OU tant que le rôle n'est pas encore résolu
+  if (loading || (user && role == null)) {
     return (
       <aside className="h-screen bg-white border-r border-gray-200 flex flex-col w-64 min-w-[200px]">
         <div className="flex items-center justify-center h-16 text-xl font-bold tracking-wide border-b border-gray-200">
@@ -128,7 +134,7 @@ export default function Sidebar() {
           animate={{ opacity: 1, y: 0 }}
           className="p-6 border-t border-gray-200"
         >
-          <div className="mb-5 p-5 bg-gray-50 rounded-xl">
+              <div className="mb-5 p-5 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                 <User size={16} className="text-blue-600" />
@@ -138,9 +144,9 @@ export default function Sidebar() {
                 <div className="text-gray-900 font-medium truncate break-all max-w-[150px]">{user.email}</div>
               </div>
             </div>
-            <div className="text-xs text-blue-600 font-medium">
-              {isAdmin ? 'Administrator' : 'Member'}
-            </div>
+                <div className="text-xs text-blue-600 font-medium">
+                  {isAdmin ? 'Administrator' : (role == null ? 'Resolving role…' : 'Member')}
+                </div>
           </div>
           
           <motion.button

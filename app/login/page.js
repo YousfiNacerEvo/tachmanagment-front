@@ -14,30 +14,15 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!user) return;
-    if (role === 'member' || role === 'guest') {
-      router.replace('/dashboard/my-work');
-      return;
-    }
+    // Wait for role to resolve (or be seeded from cache) to avoid wrong redirect
     if (role === 'admin') {
       router.replace('/dashboard/projects');
       return;
     }
-    // Fallback: if role is not resolved shortly after login, use persisted role or a safe default
-    const timer = setTimeout(() => {
-      try {
-        const persisted = typeof window !== 'undefined' ? window.localStorage.getItem('tach:lastRole') : null;
-        if (persisted === 'member' || persisted === 'guest') {
-          router.replace('/dashboard/my-work');
-        } else if (persisted === 'admin') {
-          router.replace('/dashboard/projects');
-        } else {
-          router.replace('/dashboard/projects');
-        }
-      } catch (_) {
-        router.replace('/dashboard/projects');
-      }
-    }, 2000);
-    return () => clearTimeout(timer);
+    if (role === 'member' || role === 'guest') {
+      router.replace('/dashboard/my-work');
+      return;
+    }
   }, [user, role, router]);
 
   const handleSubmit = async (e) => {
@@ -52,7 +37,18 @@ export default function LoginPage() {
         setError(error.message);
       }
     } else {
-      // Let the effect above redirect once the role is loaded by AuthContext
+      // Optimistically seed role from user-specific cache to enable immediate redirect
+      try {
+        if (typeof window !== 'undefined' && loggedInUser?.id) {
+          const cached = window.localStorage.getItem(`tach:lastRole:${loggedInUser.id}`);
+          if (cached === 'admin') {
+            router.replace('/dashboard/projects');
+          } else if (cached === 'member' || cached === 'guest') {
+            router.replace('/dashboard/my-work');
+          }
+        }
+      } catch (_) {}
+      // Let the effect above finalize once AuthContext fetches role
       setUser(loggedInUser);
     }
     setFormLoading(false);

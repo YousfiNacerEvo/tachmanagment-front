@@ -107,10 +107,20 @@ export default function FileManager({
     };
   }, [load]);
 
-  const openPicker = () => inputRef.current?.click();
+  const openPicker = () => {
+    if (!ownerId) {
+      console.warn('[FileManager] Cannot upload: missing ownerId. Save the item first.');
+      return;
+    }
+    inputRef.current?.click();
+  };
 
   const handleFiles = async (fileList) => {
     if (!fileList || fileList.length === 0) return;
+    if (!ownerId || !session) {
+      console.warn('[FileManager] Skipping upload - missing ownerId or session:', { ownerId, hasSession: !!session });
+      return;
+    }
     setBusy(true);
     try {
       const uploads = [];

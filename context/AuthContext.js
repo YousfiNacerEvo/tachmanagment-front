@@ -10,6 +10,9 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [session, setSession] = useState(null); // keep session high to avoid stale closure
+
+  const getRoleStorageKey = (uid) => `tach:lastRole:${uid}`;
 
   // Récupérer le rôle via le backend (Bearer token) pour éviter problèmes RLS/clients
   const fetchUserRole = async (userId) => {
@@ -18,7 +21,7 @@ export function AuthProvider({ children }) {
       const r = await getUserRoleFromApi(userId);
       try {
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem('tach:lastRole', r || '');
+          window.localStorage.setItem(getRoleStorageKey(userId), r || '');
         }
       } catch (_) {}
       return r || null;
@@ -40,25 +43,40 @@ export function AuthProvider({ children }) {
         if (mounted) {
           setUser(session?.user || null);
           setSession(session || null); // <-- Ajout
-          
-          // Si on a un utilisateur, récupérer son rôle immédiatement
-          if (session?.user?.id) {
-            const userRole = await fetchUserRole(session.user.id);
-            if (mounted) {
-              setRole(userRole);
+          // Seed role from user-scoped cache immediately to avoid flicker when backend is cold
+          try {
+            if (session?.user?.id && typeof window !== 'undefined') {
+              const cached = window.localStorage.getItem(getRoleStorageKey(session.user.id));
+              if (cached) setRole(cached);
             }
+            // Clean legacy key if present
+            if (typeof window !== 'undefined') {
+              window.localStorage.removeItem('tach:lastRole');
+            }
+          } catch (_) {}
+          // End loading once session is known; Sidebar/pages will hold on role === null
+          setLoading(false);
+          // Fetch role in background and update when ready
+          if (session?.user?.id) {
+            fetchUserRole(session.user.id)
+              .then((userRole) => { if (mounted) setRole(userRole); })
+              .catch(() => {});
           } else {
             // keep local role key in sync
-            try { if (typeof window !== 'undefined') window.localStorage.removeItem('tach:lastRole'); } catch (_) {}
+            try { if (typeof window !== 'undefined') {
+              // Remove all user-scoped role caches on explicit logout/no session
+              Object.keys(window.localStorage)
+                .filter(k => k.startsWith('tach:lastRole:'))
+                .forEach(k => window.localStorage.removeItem(k));
+              window.localStorage.removeItem('tach:lastRole');
+            }} catch (_) {}
+            if (mounted) setRole(null);
           }
         }
       } catch (err) {
         console.error('Error initializing auth:', err);
         if (mounted) {
           setError(err.message);
-        }
-      } finally {
-        if (mounted) {
           setLoading(false);
         }
       }
@@ -72,16 +90,27 @@ export function AuthProvider({ children }) {
         if (mounted) {
           setUser(session?.user || null);
           setSession(session || null); // <-- Ajout
-          
+          // Ensure loading is not stuck
+          setLoading(false);
           if (session?.user?.id) {
-            // Récupérer le rôle immédiatement lors du changement d'auth
-            const userRole = await fetchUserRole(session.user.id);
-            if (mounted) {
-              setRole(userRole);
-            }
+            // Instant seed from cache for this user
+            try {
+              if (typeof window !== 'undefined') {
+                const cached = window.localStorage.getItem(getRoleStorageKey(session.user.id));
+                if (cached) setRole(cached);
+              }
+            } catch (_) {}
+            fetchUserRole(session.user.id)
+              .then((userRole) => { if (mounted) setRole(userRole); })
+              .catch(() => {});
           } else {
             setRole(null);
-            try { if (typeof window !== 'undefined') window.localStorage.removeItem('tach:lastRole'); } catch (_) {}
+            try { if (typeof window !== 'undefined') {
+              Object.keys(window.localStorage)
+                .filter(k => k.startsWith('tach:lastRole:'))
+                .forEach(k => window.localStorage.removeItem(k));
+              window.localStorage.removeItem('tach:lastRole');
+            }} catch (_) {}
           }
         }
       }
@@ -93,7 +122,12 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const [session, setSession] = useState(null); // <-- Ajout
+  // Fallback: if loading persists unusually long, release it to avoid infinite spinners
+  useEffect(() => {
+    if (!loading) return;
+    const id = setTimeout(() => { try { setLoading(false); } catch (_) {} }, 5000);
+    return () => clearTimeout(id);
+  }, [loading]);
 
   const value = {
     user,
