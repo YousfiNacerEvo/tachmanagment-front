@@ -23,13 +23,9 @@ export default function ProjectTable({ projects, onEdit }) {
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Link
-                    href={`/dashboard/projects/${project.id || project._id}`}
-                    className="font-semibold hover:text-blue-600 transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                 
                     {project.title}
-                  </Link>
+                  
                 </div>
               </td>
               <td className="px-4 py-3">

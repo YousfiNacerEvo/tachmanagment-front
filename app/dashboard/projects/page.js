@@ -449,6 +449,41 @@ function ProjectsContent() {
           })
         );
       }
+
+      // Gérer les fichiers si fournis
+      if (e.filesPayload && Array.isArray(e.filesPayload) && e.filesPayload.length > 0) {
+        console.log('[handleUpdate] Uploading files:', e.filesPayload.length);
+        try {
+          const uploaded = [];
+          for (const file of e.filesPayload) {
+            const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+            const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
+            const path = `projects/${editId}/${filename}`;
+            const { error: upErr } = await supabase.storage
+              .from('filesmanagment')
+              .upload(path, file, { contentType: file.type || 'application/octet-stream' });
+            if (upErr) throw upErr;
+            const { data: signed } = await supabase.storage
+              .from('filesmanagment')
+              .createSignedUrl(path, 60 * 60 * 24 * 7);
+            uploaded.push({
+              name: file.name,
+              path,
+              url: signed?.signedUrl || '',
+              size: file.size,
+              type: file.type || 'application/octet-stream',
+              uploaded_at: new Date().toISOString(),
+            });
+          }
+          if (uploaded.length > 0) {
+            await addProjectFiles(editId, uploaded, session);
+            console.log('[handleUpdate] Files uploaded successfully:', uploaded.length);
+          }
+        } catch (fileError) {
+          console.error('[handleUpdate] File upload error:', fileError);
+          // Ne pas faire échouer la mise à jour du projet à cause des fichiers
+        }
+      }
       
       // Mettre à jour directement l'état local
       setProjects(prev => prev.map(project => 
@@ -619,7 +654,7 @@ function ProjectsContent() {
       ) : (
         <div>
           <div className="flex items-center mb-4">
-            <h2 className="text-2xl font-bold text-white">Projects Kanban</h2>
+            <h2 className="text-2xl font-bold text-gray-400">Projects Kanban</h2>
             <span className="ml-2 text-gray-400">({filteredAndSortedProjects.length} projects)</span>
           </div>
           <div style={{ height: 'calc(100vh - 160px)', display: 'flex', alignItems: 'flex-start', overflow: 'hidden' }}>

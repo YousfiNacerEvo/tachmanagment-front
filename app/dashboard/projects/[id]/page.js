@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { getProjects, getTasksByProject, createTask, updateTask, deleteTask, getTasksByProjectAndUser } from '../../../../lib/api';
 import { useAuth } from '../../../../context/AuthContext';
 import TaskKanban from '../../../../components/TaskKanban';
+import { supabase } from '../../../../lib/supabase';
 
 
 const PRIORITY_COLORS = {
@@ -166,6 +167,32 @@ export default function ProjectDetailPage() {
   const [editingTask, setEditingTask] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const { isAdmin, user, session, loading: authLoading } = useAuth();
+
+  // Fonction pour récupérer les assignations existantes d'une tâche
+  const getTaskAssignments = async (taskId) => {
+    try {
+      // Récupérer les assignations utilisateurs
+      const { data: userAssignments } = await supabase
+        .from('task_assignees')
+        .select('user_id')
+        .eq('task_id', taskId);
+
+      // Récupérer les assignations groupes
+      const { data: groupAssignments } = await supabase
+        .from('group_task_assignments')
+        .select('group_id')
+        .eq('task_id', taskId);
+
+      return {
+        user_ids: userAssignments?.map(a => a.user_id) || [],
+        group_ids: groupAssignments?.map(a => a.group_id) || []
+      };
+    } catch (error) {
+      console.error('Erreur lors de la récupération des assignations:', error);
+      return { user_ids: [], group_ids: [] };
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -199,7 +226,8 @@ export default function ProjectDetailPage() {
     setFormLoading(true);
     try {
       console.log('Tentative de création de tâche avec :', { ...taskData, project_id: projectId });
-      const newTask = await createTask({ ...taskData, project_id: projectId },user_ids, group_ids,session);
+      const { user_ids = [], group_ids = [], ...taskWithoutAssignments } = taskData || {};
+      const newTask = await createTask({ ...taskWithoutAssignments, project_id: projectId }, user_ids, group_ids, session);
       setTasks(prev => [newTask, ...prev]);
       setShowTaskForm(false);
     } catch (err) {
@@ -213,7 +241,15 @@ export default function ProjectDetailPage() {
   const handleUpdateTask = async (taskData) => {
     setFormLoading(true);
     try {
-      const updatedTask = await updateTask(editingTask.id, taskData, [], [], session);
+      // Récupérer les assignations existantes avant la mise à jour
+      const assignments = await getTaskAssignments(editingTask.id);
+      const updatedTask = await updateTask(
+        editingTask.id, 
+        taskData, 
+        assignments.user_ids, 
+        assignments.group_ids, 
+        session
+      );
       setTasks(prev => prev.map(t => t.id === editingTask.id ? updatedTask : t));
       setEditingTask(null);
     } catch (err) {
@@ -238,7 +274,15 @@ export default function ProjectDetailPage() {
     const newStatus = task.status === 'terminé' ? 'en cours' : 'terminé';
     
     try {
-      const updatedTask = await updateTask(task.id, { status: newStatus }, [], [], session);
+      // Récupérer les assignations existantes avant la mise à jour
+      const assignments = await getTaskAssignments(task.id);
+      const updatedTask = await updateTask(
+        task.id, 
+        { status: newStatus }, 
+        assignments.user_ids, 
+        assignments.group_ids, 
+        session
+      );
       setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
     } catch (err) {
       console.error('Failed to update task:', err);
@@ -315,7 +359,15 @@ export default function ProjectDetailPage() {
           onDelete={handleDeleteTask}
           onStatusChange={async (task, newStatus) => {
             try {
-              const updatedTask = await updateTask(task.id, { status: newStatus }, [], [], session);
+              // Récupérer les assignations existantes avant la mise à jour
+              const assignments = await getTaskAssignments(task.id);
+              const updatedTask = await updateTask(
+                task.id, 
+                { status: newStatus }, 
+                assignments.user_ids, 
+                assignments.group_ids, 
+                session
+              );
               setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
             } catch (err) {
               console.error('Erreur lors du changement de statut de la tâche', err);

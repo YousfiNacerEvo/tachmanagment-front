@@ -41,8 +41,18 @@ export function AuthProvider({ children }) {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (mounted) {
-          setUser(session?.user || null);
-          setSession(session || null); // <-- Ajout
+          // Gérer le cas où il n'y a pas de session (première visite)
+          if (!session) {
+            setUser(null);
+            setSession(null);
+            setRole(null);
+            setLoading(false);
+            return;
+          }
+
+          setUser(session.user || null);
+          console.log('session', session?.user);
+          setSession(session || null);
           // Seed role from user-scoped cache immediately to avoid flicker when backend is cold
           try {
             if (session?.user?.id && typeof window !== 'undefined') {
@@ -78,6 +88,10 @@ export function AuthProvider({ children }) {
         if (mounted) {
           setError(err.message);
           setLoading(false);
+          // En cas d'erreur, initialiser avec des valeurs par défaut
+          setUser(null);
+          setSession(null);
+          setRole(null);
         }
       }
     };
@@ -88,8 +102,26 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (mounted) {
-          setUser(session?.user || null);
-          setSession(session || null); // <-- Ajout
+          console.log('Auth state change:', event, session?.user?.id || 'no user');
+          
+          // Gérer le cas où il n'y a pas de session
+          if (!session) {
+            setUser(null);
+            setSession(null);
+            setRole(null);
+            setLoading(false);
+            // Nettoyer le cache des rôles
+            try { if (typeof window !== 'undefined') {
+              Object.keys(window.localStorage)
+                .filter(k => k.startsWith('tach:lastRole:'))
+                .forEach(k => window.localStorage.removeItem(k));
+              window.localStorage.removeItem('tach:lastRole');
+            }} catch (_) {}
+            return;
+          }
+
+          setUser(session.user || null);
+          setSession(session || null);
           // Ensure loading is not stuck
           setLoading(false);
           if (session?.user?.id) {

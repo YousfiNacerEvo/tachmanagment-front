@@ -20,6 +20,7 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [newPhotos, setNewPhotos] = useState([]);
+  const [existingAssignments, setExistingAssignments] = useState({ user_ids: [], group_ids: [] });
 
   useEffect(() => {
     if (task) {
@@ -32,8 +33,40 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
         project_id: task.project_id || null,
         progress: typeof task.progress === 'number' ? task.progress : 0
       });
+
+      // Récupérer les assignations existantes
+      if (task.id) {
+        fetchExistingAssignments(task.id);
+      }
     }
   }, [task]);
+
+  // Fonction pour récupérer les assignations existantes
+  const fetchExistingAssignments = async (taskId) => {
+    try {
+      // Récupérer les assignations utilisateurs
+      const { data: userAssignments } = await supabase
+        .from('task_assignees')
+        .select('user_id')
+        .eq('task_id', taskId);
+
+      // Récupérer les assignations groupes
+      const { data: groupAssignments } = await supabase
+        .from('group_task_assignments')
+        .select('group_id')
+        .eq('task_id', taskId);
+
+      const assignments = {
+        user_ids: userAssignments?.map(a => a.user_id) || [],
+        group_ids: groupAssignments?.map(a => a.group_id) || []
+      };
+
+      console.log(`[TaskEditModal] Assignations récupérées pour la tâche ${taskId}:`, assignments);
+      setExistingAssignments(assignments);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des assignations:', error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,7 +90,14 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
         }
       }
 
-      const updatedTask = await updateTask(task.id, taskData, [], [], session);
+      // Utiliser les assignations existantes au lieu de tableaux vides
+      const updatedTask = await updateTask(
+        task.id, 
+        taskData, 
+        existingAssignments.user_ids, 
+        existingAssignments.group_ids, 
+        session
+      );
       onUpdate(updatedTask);
       onClose();
     } catch (err) {
@@ -234,11 +274,7 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
               disabled={!isAdmin}
             />
           </div>
-          {isAdmin && task?.id && (
-            <div className="mt-6">
-              <FileManager ownerType="task" ownerId={task.id} />
-            </div>
-          )}
+          
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -258,7 +294,11 @@ export default function TaskEditModal({ task, isOpen, onClose, onUpdate, isAdmin
         </form>
 
           {/* Files (admin can manage full list) */}
-          
+          {isAdmin && task?.id && (
+            <div className="mt-6">
+              <FileManager ownerType="task" ownerId={task.id} />
+            </div>
+          )}
         </div>
       </div>
     </div>

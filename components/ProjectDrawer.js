@@ -445,7 +445,16 @@ export default function ProjectDrawer({
           {isAdmin ? (
             <form
               onSubmit={async (e) => {
-                if (editMode) return onUpdate(e);
+                if (editMode) {
+                  e.preventDefault();
+                  // Gérer les fichiers lors de la mise à jour aussi
+                  try {
+                    await onUpdate({ filesPayload: newFiles });
+                  } finally {
+                    setNewFiles([]);
+                  }
+                  return;
+                }
                 e.preventDefault();
                 // include files in creation (do not pass SyntheticEvent)
                 try {
@@ -830,6 +839,9 @@ export default function ProjectDrawer({
                   </ul>
                 )}
               </div>
+
+              {/* Section des fichiers du projet pour les admins */}
+              
 
               {/* Files Section */}
               

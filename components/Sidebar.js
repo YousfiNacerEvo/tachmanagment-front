@@ -86,7 +86,7 @@ export default function Sidebar() {
     <>
       {/* Header */}
       <div className="flex items-center justify-between h-16 px-7 border-b border-gray-200">
-        <Link href="/dashboard" className="text-xl font-bold text-gray-900">
+        <Link href="" className="text-xl font-bold text-gray-900">
           MyApp
         </Link>
         <button

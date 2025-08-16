@@ -2,10 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { getUsers, addTaskFiles } from '../lib/api';
 import { toast } from 'react-hot-toast';
-import GroupSelector from './GroupSelector';
-import AssigneeSelector from './AssigneeSelector';
 import ModernAssigneeSelector from './ModernAssigneeSelector';
-import { getGroupMembers, getGroupsByTask, getGroupsByProject } from '../lib/api';
+import { getGroupsByProject } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import FileManager from './FileManager';
 import { supabase } from '../lib/supabase';
@@ -93,14 +91,6 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
     setForm(prev => ({
       ...prev,
       user_ids: options
-    }));
-    setError(null);
-  };
-
-  const handleGroupChange = (groupIds) => {
-    setForm(prev => ({
-      ...prev,
-      group_ids: groupIds
     }));
     setError(null);
   };

@@ -1,12 +1,10 @@
 "use client";
 import React, { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { 
-  getStandaloneTasks, 
-  getProjectTasks, 
-  getProjects, 
-  createTask, 
-  updateTask, 
+import {
+  getProjects,
+  createTask,
+  updateTask,
   deleteTask,
   getUsers,
   getAllUserTasks,
@@ -66,12 +64,12 @@ function TasksContent() {
 
   const fetchData = useCallback(async () => {
     if (!session) return; // Vérifier que session existe avant d'appeler l'API
-    
+
     setLoading(true);
     setError(null);
     try {
       let standaloneData, projectData;
-      
+
       if (isAdmin) {
         // Les admins voient toutes les tâches
         [standaloneData, projectData] = await Promise.all([
@@ -82,21 +80,21 @@ function TasksContent() {
         // Les membres ne voient que leurs tâches assignées
         const userTasks = await getAllUserTasks(user.id, session);
         console.log('User tasks for member:', userTasks);
-        
+
         // Séparer les tâches standalone des tâches de projet
         standaloneData = userTasks.filter(task => !task.project_id);
         projectData = userTasks.filter(task => task.project_id);
       }
-      
+
       const [projectsData, usersData] = await Promise.all([
         getProjects(session),
         getUsers(session)
       ]);
-      
+
       console.log('Fetched standalone tasks:', standaloneData);
       console.log('Fetched project tasks:', projectData);
       console.log('Fetched users:', usersData);
-      
+
       setStandaloneTasks(standaloneData);
       setProjectTasks(projectData);
       setProjects(projectsData);
@@ -131,7 +129,7 @@ function TasksContent() {
   const filterTasks = (tasks) => {
     return tasks.filter(task => {
       // Filtre par recherche (titre et description)
-      const searchMatch = !searchTerm || 
+      const searchMatch = !searchTerm ||
         task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -140,7 +138,7 @@ function TasksContent() {
         if (status === 'in_progress') return 'in progress';
         return status;
       };
-      
+
       const taskStatus = normalizeStatus(task.status);
       const filterStatus = normalizeStatus(filters.status);
       const statusMatch = !filters.status || taskStatus === filterStatus;
@@ -191,21 +189,21 @@ function TasksContent() {
     try {
       // Handle group assignments first
       const { group_ids, user_ids, id, ...taskWithoutAssignments } = taskData; // Exclure l'ID lors de la création
-      
+
       // Create the task with assignments
       const taskToSend = { ...taskWithoutAssignments };
       if (!taskToSend.deadline) {
         delete taskToSend.deadline;
       }
-      const newTask = await createTask(taskToSend,user_ids, group_ids, session);//user_ids || [], group_ids || []
+      const newTask = await createTask(taskToSend, user_ids, group_ids, session);//user_ids || [], group_ids || []
       console.log('DEBcG: Objet newTask après création:', newTask);
       console.log('DEBUG: newTask.id après création:', newTask.id, 'type:', typeof newTask.id);
-      
+
       // Vérifier que la tâche a été créée avec un ID
       if (!newTask || !newTask.id) {
         throw new Error('Failed to create task: No ID returned');
       }
-      
+
       // Upload any selected files during creation
       if (Array.isArray(taskData.files) && taskData.files.length > 0) {
         const uploaded = [];
@@ -231,14 +229,14 @@ function TasksContent() {
       }
 
       console.log('Task created successfully:', newTask);
-      
+
       // Ajouter la nouvelle tâche à l'état local
       const taskWithAssignments = {
         ...newTask,
         assignees: user_ids || [],
         groups: group_ids || []
       };
-      
+
       setStandaloneTasks(prev => [taskWithAssignments, ...prev]);
       setShowStandaloneForm(false);
       toast.success('Standalone task created successfully!');
@@ -254,12 +252,12 @@ function TasksContent() {
     setFormLoading(true);
     try {
       const { group_ids, user_ids, ...taskWithoutAssignments } = taskData;
-      
+
       // Update the task with assignments
       const updatedTask = await updateTask(taskData.id, taskWithoutAssignments, user_ids || [], group_ids || [], session);
-      
+
       console.log('Task updated successfully:', updatedTask);
-      
+
       // Rafraîchir les données à jour depuis l'API pour éviter tout décalage
       if (isAdmin) {
         const [standaloneData, projectData] = await Promise.all([
@@ -273,7 +271,7 @@ function TasksContent() {
         setStandaloneTasks(userTasks.filter(t => !t.project_id));
         setProjectTasks(userTasks.filter(t => t.project_id));
       }
-      
+
       setShowStandaloneForm(false);
       setEditingTask(null);
       toast.success('Task updated successfully!');
@@ -287,17 +285,17 @@ function TasksContent() {
 
   const handleDeleteTask = async (task) => {
     if (!window.confirm('Are you sure you want to delete this task? Its files will be deleted.')) return;
-    
+
     try {
-      await deleteTask(task.id,session);
-      
+      await deleteTask(task.id, session);
+
       // Supprimer de la bonne liste
       if (task.project_id) {
         setProjectTasks(prev => prev.filter(t => t.id !== task.id));
       } else {
         setStandaloneTasks(prev => prev.filter(t => t.id !== task.id));
       }
-      
+
       toast.success('Task deleted successfully!');
     } catch (err) {
       toast.error(err.message || 'Failed to delete task');
@@ -318,10 +316,10 @@ function TasksContent() {
     // Load groups and users for tasks
     const loadTaskGroupsAndUsers = async (taskId) => {
       if (taskGroups[taskId] || loadingGroups[taskId]) return;
-      
+
       setLoadingGroups(prev => ({ ...prev, [taskId]: true }));
       try {
-        const groups = await getGroupsByTask(taskId,session);
+        const groups = await getGroupsByTask(taskId, session);
         setTaskGroups(prev => ({ ...prev, [taskId]: groups }));
       } catch (err) {
         console.error('Failed to load task groups:', err);
@@ -358,9 +356,9 @@ function TasksContent() {
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Deadline</th>
                   <th className="px-4 py-3">Priority</th>
-                                       <th className="px-4 py-3">Assignees</th>
-                     <th className="px-4 py-3">Groups</th>
-                     <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">Assignees</th>
+                  <th className="px-4 py-3">Groups</th>
+                  <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -389,9 +387,8 @@ function TasksContent() {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`px-2 py-1 rounded text-xs font-semibold ${
-                          PRIORITY_COLORS[task.priority] || "bg-gray-200 text-gray-700"
-                        }`}
+                        className={`px-2 py-1 rounded text-xs font-semibold ${PRIORITY_COLORS[task.priority] || "bg-gray-200 text-gray-700"
+                          }`}
                       >
                         {task.priority}
                       </span>
@@ -401,7 +398,7 @@ function TasksContent() {
                         // N'afficher que les utilisateurs explicitement assignés
                         const directAssignees = task.user_ids || [];
                         console.log(`Task ${task.id} - direct user_ids:`, directAssignees, 'users:', users);
-                        
+
                         return directAssignees && directAssignees.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {directAssignees.map(userId => {
@@ -426,8 +423,8 @@ function TasksContent() {
                         onClick={() => loadTaskGroupsAndUsers(task.id)}
                         className="text-blue-400 hover:text-blue-300 text-xs"
                       >
-                        {loadingGroups[task.id] ? 'Loading...' : 
-                         taskGroups[task.id] ? `${taskGroups[task.id].length} groups` : 'View groups'}
+                        {loadingGroups[task.id] ? 'Loading...' :
+                          taskGroups[task.id] ? `${taskGroups[task.id].length} groups` : 'View groups'}
                       </button>
                       {taskGroups[task.id] && taskGroups[task.id].length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">
@@ -439,25 +436,25 @@ function TasksContent() {
                         </div>
                       )}
                     </td>
-                                         <td className="px-4 py-3">
-                       <div className="flex gap-2">
-                         <button
-                           onClick={() => handleEditTask(task)}
-                           className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
-                           disabled={editLoading}
-                         >
-                           {editLoading ? 'Loading...' : 'Edit'}
-                         </button>
-                         {isAdmin && (
-                           <button
-                             onClick={() => handleDeleteTask(task)}
-                             className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
-                           >
-                             Delete
-                           </button>
-                         )}
-                       </div>
-                     </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditTask(task)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+                          disabled={editLoading}
+                        >
+                          {editLoading ? 'Loading...' : 'Edit'}
+                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteTask(task)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -475,22 +472,22 @@ function TasksContent() {
       // Utiliser les assignations de la tâche si disponibles, sinon charger depuis l'API
       let user_ids = task.assignees || task.user_ids || [];
       let group_ids = task.groups || task.group_ids || [];
-      
+
       // Si les groupes ne sont pas disponibles dans la tâche, les charger depuis l'API
       if (!group_ids || group_ids.length === 0) {
-        const groups = await getGroupsByTask(task.id,session);
+        const groups = await getGroupsByTask(task.id, session);
         group_ids = groups.map(g => g.group_id);
       }
-      
+
       console.log('Task data for editing:', { task, user_ids, group_ids });
-      
-      setEditTaskData({ 
-        ...task, 
+
+      setEditTaskData({
+        ...task,
         user_ids,
         group_ids
       });
-      setEditingTask({ 
-        ...task, 
+      setEditingTask({
+        ...task,
         user_ids,
         group_ids
       });
@@ -523,7 +520,7 @@ function TasksContent() {
               console.log('Standalone tasks:', standaloneTasks);
               console.log('Project tasks:', projectTasks);
               console.log('Users:', users);
-              
+
               // Test direct de l'API
               try {
                 const testData = await getStandaloneTasksWithAssignees(session);
@@ -554,7 +551,7 @@ function TasksContent() {
       />
 
       {loading ? (
-        <div className="text-white text-center py-10">Loading tasks...</div>
+        <div className="text-gray-300 text-center py-10">Loading tasks...</div>
       ) : error ? (
         <div className="text-red-400 text-center py-10">{error}</div>
       ) : (
