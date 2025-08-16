@@ -27,6 +27,18 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
   const [uploading, setUploading] = useState(false);
   const [fileReloadTick, setFileReloadTick] = useState(0);
 
+  // Fonction pour formater la date pour le champ HTML date
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toISOString().split('T')[0]; // Format YYYY-MM-DD
+    } catch (e) {
+      return '';
+    }
+  };
+
   useEffect(() => {
     // Charger les utilisateurs
     getUsers(session)
@@ -38,18 +50,28 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
 
     // Si on édite une tâche existante, remplir le formulaire et charger les assignés
     if (task) {
+      console.log('🔍 Editing task:', task);
+      console.log('📅 Task deadline:', task.deadline);
+      console.log('📊 Task progress:', task.progress);
+      console.log('📅 Formatted deadline:', formatDateForInput(task.deadline));
+      
       setForm({
         id: task.id, // Ajouter l'ID de la tâche seulement pour l'édition
         title: task.title || '',
         description: task.description || '',
         status: task.status || 'to do',
         priority: task.priority || 'medium',
-        deadline: task.deadline || '',
+        deadline: formatDateForInput(task.deadline),
         // Ne pas injecter les membres de groupes: garder uniquement les utilisateurs explicitement assignés
         user_ids: task.user_ids || [],
         group_ids: task.group_ids || task.groups || [], // Load assigned groups
         files: [],
-        progress: typeof task.progress === 'number' ? task.progress : 0,
+        progress: task.progress !== undefined && task.progress !== null ? Number(task.progress) : 0,
+      });
+      
+      console.log('✅ Form set with values:', {
+        deadline: task.deadline || '',
+        progress: task.progress !== undefined && task.progress !== null ? Number(task.progress) : 0
       });
       // Charger les assignés du projet parent si project_id existe
       if (task.project_id) {
@@ -108,6 +130,8 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
       
       try {
         await onSubmit(updatedForm);
+        // Fermer le formulaire après mise à jour réussie
+        onCancel();
       } catch (err) {
         setError(err.message || 'Failed to update task status');
       }
@@ -134,6 +158,8 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
 
     try {
       await onSubmit(form);
+      // Fermer le formulaire après création/mise à jour réussie
+      onCancel();
     } catch (err) {
       setError(err.message || 'Failed to save task');
     }

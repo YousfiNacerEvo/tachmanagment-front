@@ -7,9 +7,11 @@ import {
   getUserTasks, 
   getUserGroupsWithDetails,
   getAllUserTasks,
-  getProjects
+  getProjects,
+  getProjectDetails
 } from '../../../lib/api';
 import TaskEditModal from '../../../components/TaskEditModal';
+import FileManager from '../../../components/FileManager';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { 
@@ -25,7 +27,12 @@ import {
   Clock,
   Tag,
   User,
-  Building
+  Building,
+  ArrowLeft,
+  FileText,
+  CalendarDays,
+  UserCheck,
+  Target
 } from 'lucide-react';
 
 function MyWorkContent() {
@@ -48,6 +55,11 @@ function MyWorkContent() {
   });
   const [editingTask, setEditingTask] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  
+  // New state for project details view
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [projectDetails, setProjectDetails] = useState(null);
+  const [loadingProjectDetails, setLoadingProjectDetails] = useState(false);
 
   useEffect(() => {
     if (!user || userLoading) return;
@@ -129,6 +141,28 @@ function MyWorkContent() {
     ));
   };
 
+  // New function to handle project selection
+  const handleProjectClick = async (project) => {
+    setSelectedProject(project);
+    setLoadingProjectDetails(true);
+    try {
+      const details = await getProjectDetails(project.id || project._id, session);
+      setProjectDetails(details);
+    } catch (err) {
+      console.error('Error loading project details:', err);
+      setError('Failed to load project details');
+    } finally {
+      setLoadingProjectDetails(false);
+    }
+  };
+
+  // Function to go back to projects list
+  const handleBackToProjects = () => {
+    setSelectedProject(null);
+    setProjectDetails(null);
+    setError(null);
+  };
+
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'done': return 'bg-green-100 text-green-700 border-green-200';
@@ -177,8 +211,180 @@ function MyWorkContent() {
               <div className="text-red-500 text-6xl mb-4">⚠️</div>
               <h2 className="text-red-600 text-xl font-semibold mb-2">Oops!</h2>
               <p className="text-gray-600">{error}</p>
+              <button 
+                onClick={handleBackToProjects}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Go Back
+              </button>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show project details if a project is selected
+  if (selectedProject) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto p-6">
+          {/* Back Button */}
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={handleBackToProjects}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 transition-colors"
+          >
+            <ArrowLeft size={20} />
+            Back to Projects
+          </motion.button>
+
+          {/* Project Header */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl p-8 mb-8 shadow-sm border border-gray-200"
+          >
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-gray-900 mb-3">
+                  {selectedProject.name || selectedProject.title || 'Untitled Project'}
+                </h1>
+                <p className="text-gray-600 text-lg mb-4">
+                  {selectedProject.description || 'No description available'}
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Target className="text-blue-600" size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Status</p>
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(selectedProject.status)}`}>
+                        {selectedProject.status || 'Unknown'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <CalendarDays className="text-green-600" size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Timeline</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedProject.start ? new Date(selectedProject.start).toLocaleDateString() : 'Not set'} 
+                        {selectedProject.end && ` → ${new Date(selectedProject.end).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <UserCheck className="text-purple-600" size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Assigned To</p>
+                      <p className="text-sm font-medium text-gray-900">You</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Project Files Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-8"
+          >
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <FileText className="text-blue-600" size={24} />
+                Project Files
+              </h2>
+              <p className="text-gray-600 mb-4">
+                Manage files for this project. You can add, delete, and organize project documents.
+              </p>
+              
+              {loadingProjectDetails ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">Loading project files...</span>
+                </div>
+              ) : (
+                <FileManager
+                  ownerType="project"
+                  ownerId={selectedProject.id || selectedProject._id}
+                  title="Project Files"
+                  className="w-full"
+                />
+              )}
+            </div>
+          </motion.div>
+
+          {/* Project Tasks Section (Read-only) */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <CheckSquare className="text-green-600" size={24} />
+                Project Tasks
+              </h2>
+              <p className="text-gray-600 mb-4">
+                View tasks associated with this project. Contact your project manager to modify tasks.
+              </p>
+              
+              {loadingProjectDetails ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">Loading project tasks...</span>
+                </div>
+              ) : projectDetails?.tasks && projectDetails.tasks.length > 0 ? (
+                <div className="space-y-3">
+                  {projectDetails.tasks.map((task, index) => (
+                    <div key={task.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900 text-lg mb-2">{task.title}</h3>
+                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                            {task.description || 'No description'}
+                          </p>
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getStatusColor(task.status)}`}>
+                              {task.status}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getPriorityColor(task.priority)}`}>
+                              {task.priority}
+                            </span>
+                            {task.deadline && (
+                              <div className="flex items-center gap-1 text-gray-500">
+                                <Clock size={14} />
+                                <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <CheckSquare className="text-gray-400 mx-auto mb-3" size={48} />
+                  <p>No tasks found for this project</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
         </div>
       </div>
     );
@@ -265,7 +471,8 @@ function MyWorkContent() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="group bg-white rounded-2xl p-6 border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-lg"
+                        className="group bg-white rounded-2xl p-6 border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-lg cursor-pointer"
+                        onClick={() => handleProjectClick(project)}
                       >
                         <div className="flex items-start justify-between mb-4">
                           <h3 className="font-semibold text-gray-900 text-lg">{project.name || project.title || 'Untitled Project'}</h3>
