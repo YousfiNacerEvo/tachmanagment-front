@@ -261,7 +261,7 @@ export default function TaskLoadOverviewPage() {
           </div>
 
           {/* Group section */}
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+          {/* <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
             <div className="mb-4">
               <h2 className="text-xl font-bold text-gray-900">Group overview</h2>
               <p className="text-sm text-gray-500">Totals and per-user breakdown</p>
@@ -299,7 +299,7 @@ export default function TaskLoadOverviewPage() {
                 );
               })}
             </div>
-          </div>
+          </div> */}
         </div>
       )}
     </div>

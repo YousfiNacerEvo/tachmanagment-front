@@ -20,7 +20,7 @@ import {
   Building,
   ChevronRight
 } from 'lucide-react';
-
+import Image from 'next/image';
 export default function Sidebar() {
   const pathname = usePathname();
   const { isAdmin, user, loading, role } = useUser();
@@ -47,6 +47,7 @@ export default function Sidebar() {
     // Interface simplifiée pour Members et Guests
     navItems = [
       { href: '/dashboard/my-work', label: 'My Work', icon: FolderOpen },
+      { href: '/dashboard/my-groups', label: 'My Groups', icon: Building },
       { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
     ];
   }
@@ -70,7 +71,7 @@ export default function Sidebar() {
     return (
       <aside className="h-screen bg-white border-r border-gray-200 flex flex-col w-64 min-w-[200px]">
         <div className="flex items-center justify-center h-16 text-xl font-bold tracking-wide border-b border-gray-200">
-          <span className="text-gray-900">MyApp</span>
+          <Image src="/asbuLogo.png" alt="Logo" width={100} height={100} />
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -85,10 +86,8 @@ export default function Sidebar() {
   const SidebarContent = () => (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between h-16 px-7 border-b border-gray-200">
-        <Link href="" className="text-xl font-bold text-gray-900">
-          MyApp
-        </Link>
+      <div className="flex items-center justify-between  p-4 border-b border-gray-200">
+      <Image src="/asbuLogo.png" alt="Logo" width={200} height={200} className=''/>
         <button
           onClick={() => setIsMobileMenuOpen(false)}
           className="lg:hidden p-1 rounded-lg hover:bg-gray-100"

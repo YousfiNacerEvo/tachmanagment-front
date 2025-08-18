@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { login } from '../../lib/auth';
-
+import Image from 'next/image';
 export default function LoginPage() {
   const router = useRouter();
   const { user, setUser, loading, error, setError, role } = useAuth();
@@ -14,16 +14,26 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!user) return;
-    // Wait for role to resolve (or be seeded from cache) to avoid wrong redirect
-    if (role === 'admin') {
-      router.replace('/dashboard/projects');
-      return;
-    }
-    if (role === 'member' || role === 'guest') {
-      router.replace('/dashboard/my-work');
-      return;
-    }
-  }, [user, role, router]);
+    
+    // Redirection immédiate basée sur le cache local si disponible
+    try {
+      if (typeof window !== 'undefined' && user?.id) {
+        const cached = window.localStorage.getItem(`tach:lastRole:${user.id}`);
+        if (cached === 'admin') {
+          router.replace('/dashboard/projects');
+          return;
+        }
+        if (cached === 'member' || cached === 'guest') {
+          router.replace('/dashboard/my-work');
+          return;
+        }
+      }
+    } catch (_) {}
+    
+    // Si pas de cache, rediriger vers my-work par défaut (plus sûr que d'attendre)
+    // Le rôle sera mis à jour en arrière-plan et les pages s'adapteront
+    router.replace('/dashboard/my-work');
+  }, [user, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,18 +47,7 @@ export default function LoginPage() {
         setError(error.message);
       }
     } else {
-      // Optimistically seed role from user-specific cache to enable immediate redirect
-      try {
-        if (typeof window !== 'undefined' && loggedInUser?.id) {
-          const cached = window.localStorage.getItem(`tach:lastRole:${loggedInUser.id}`);
-          if (cached === 'admin') {
-            router.replace('/dashboard/projects');
-          } else if (cached === 'member' || cached === 'guest') {
-            router.replace('/dashboard/my-work');
-          }
-        }
-      } catch (_) {}
-      // Let the effect above finalize once AuthContext fetches role
+      // Définir l'utilisateur immédiatement - la redirection se fera via useEffect
       setUser(loggedInUser);
     }
     setFormLoading(false);
@@ -57,8 +56,10 @@ export default function LoginPage() {
   if (formLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#f7f9fb]">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#f7f9fb]">
+      <Image src="/asbuLogo.png" alt="Logo" width={350} height={350} className='mb-10'/>
       <div className="card w-full max-w-md p-8">
+      
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold text-gray-900">Welcome back</h1>
           <p className="text-gray-500 mt-1">Sign in to continue</p>

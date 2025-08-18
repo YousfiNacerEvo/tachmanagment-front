@@ -309,9 +309,21 @@ function TasksContent() {
     return project ? project.title : "-";
   }
 
-  function TaskTable({ tasks, title, emptyMessage, showProject = false, users = [] }) {
+  function TaskTable({ tasks, title, emptyMessage, showProject = false, users = [], pageSize = 10 }) {
     const [taskGroups, setTaskGroups] = useState({});
     const [loadingGroups, setLoadingGroups] = useState({});
+    const [currentPage, setCurrentPage] = useState(1);
+    const totalPages = Math.max(1, Math.ceil((tasks?.length || 0) / pageSize));
+
+    useEffect(() => {
+      setCurrentPage(1);
+    }, [tasks, pageSize]);
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const currentTasks = (tasks || []).slice(startIndex, startIndex + pageSize);
+
+    const goPrev = () => setCurrentPage(p => Math.max(1, p - 1));
+    const goNext = () => setCurrentPage(p => Math.min(totalPages, p + 1));
 
     // Load groups and users for tasks
     const loadTaskGroupsAndUsers = async (taskId) => {
@@ -362,7 +374,7 @@ function TasksContent() {
                 </tr>
               </thead>
               <tbody>
-                {tasks.map((task) => (
+                {currentTasks.map((task) => (
                   <tr
                     key={task.id}
                     className="border-t border-gray-200 hover:bg-gray-50 transition-colors"
@@ -459,6 +471,40 @@ function TasksContent() {
                 ))}
               </tbody>
             </table>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white">
+                <button
+                  type="button"
+                  onClick={goPrev}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1.5 rounded-md border text-sm font-medium ${
+                    currentPage === 1
+                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  aria-label="Previous page"
+                >
+                  Prev
+                </button>
+                <div className="text-sm text-gray-600">
+                  Page <span className="font-semibold">{currentPage}</span> of{' '}
+                  <span className="font-semibold">{totalPages}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1.5 rounded-md border text-sm font-medium ${
+                    currentPage === totalPages
+                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  aria-label="Next page"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -514,25 +560,7 @@ function TasksContent() {
               + Create Standalone Task
             </button>
           )}
-          <button
-            onClick={async () => {
-              console.log('=== DEBUG: Testing assignments ===');
-              console.log('Standalone tasks:', standaloneTasks);
-              console.log('Project tasks:', projectTasks);
-              console.log('Users:', users);
-
-              // Test direct de l'API
-              try {
-                const testData = await getStandaloneTasksWithAssignees(session);
-                console.log('Direct API test result:', testData);
-              } catch (err) {
-                console.error('Direct API test error:', err);
-              }
-            }}
-            className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-4 py-2 rounded transition-colors"
-          >
-            Debug Assignments
-          </button>
+          
         </div>
       </div>
 

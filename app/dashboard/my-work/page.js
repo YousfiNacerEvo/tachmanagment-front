@@ -13,7 +13,7 @@ import {
 import TaskEditModal from '../../../components/TaskEditModal';
 import FileManager from '../../../components/FileManager';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   FolderOpen, 
   CheckSquare, 
@@ -37,7 +37,8 @@ import {
 
 function MyWorkContent() {
   const { user, loading: userLoading } = useUser();
-  const { session } = useAuth();
+  const { session, isAdmin, role, loading: authLoading } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const openedFromQueryRef = useRef(false);
   const [projects, setProjects] = useState([]);
@@ -60,6 +61,14 @@ function MyWorkContent() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectDetails, setProjectDetails] = useState(null);
   const [loadingProjectDetails, setLoadingProjectDetails] = useState(false);
+
+  // Rediriger les admins vers la page projects
+  useEffect(() => {
+    if (!authLoading && isAdmin && role === 'admin') {
+      router.replace('/dashboard/projects');
+      return;
+    }
+  }, [isAdmin, role, authLoading, router]);
 
   useEffect(() => {
     if (!user || userLoading) return;

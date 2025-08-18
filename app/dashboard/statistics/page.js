@@ -3,12 +3,76 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { getUsers, getProjects, getAllGroups, getProjectTasksWithAssignees, getStandaloneTasksWithAssignees, getAllUserTasks, getUserGroupsWithDetails } from '../../../lib/api';
 
-function StatCard({ label, value, sub }) {
+function StatCard({ label, value, sub, icon = null, color = 'blue' }) {
+  const colorMap = {
+    blue: 'from-blue-50 to-blue-100 text-blue-700',
+    green: 'from-green-50 to-green-100 text-green-700',
+    purple: 'from-purple-50 to-purple-100 text-purple-700',
+    amber: 'from-amber-50 to-amber-100 text-amber-700',
+    rose: 'from-rose-50 to-rose-100 text-rose-700',
+    slate: 'from-slate-50 to-slate-100 text-slate-700',
+  };
   return (
-    <div className="p-4 rounded-xl border border-gray-200 bg-white">
-      <div className="text-sm text-gray-500">{label}</div>
-      <div className="text-2xl font-bold text-gray-900">{value}</div>
-      {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
+    <div className="p-4 rounded-xl border border-gray-200 bg-white relative overflow-hidden">
+      <div className={`absolute inset-0 bg-gradient-to-br ${colorMap[color] || colorMap.blue} opacity-60 pointer-events-none`} />
+      <div className="relative flex items-start gap-3">
+        {icon && (
+          <div className="shrink-0 p-2 rounded-lg bg-white/70 border border-gray-200">
+            {icon}
+          </div>
+        )}
+        <div className="flex-1">
+          <div className="text-sm text-gray-600">{label}</div>
+          <div className="text-2xl font-bold text-gray-900">{value}</div>
+          {sub && <div className="text-xs text-gray-500 mt-1">{sub}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RingProgress({ percent = 0, size = 120, stroke = 12, label = 'Completion' }) {
+  const clamped = Math.max(0, Math.min(100, percent));
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dash = (clamped / 100) * circumference;
+  return (
+    <div className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white">
+      <svg width={size} height={size} className="shrink-0" viewBox={`0 0 ${size} ${size}`}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="#E5E7EB"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="url(#grad)"
+          strokeWidth={stroke}
+          strokeDasharray={`${dash} ${circumference - dash}`}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#22C55E" />
+            <stop offset="100%" stopColor="#16A34A" />
+          </linearGradient>
+        </defs>
+        <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" className="text-lg font-bold fill-gray-900">
+          {clamped}%
+        </text>
+      </svg>
+      <div>
+        <div className="text-sm text-gray-600">{label}</div>
+        <div className="text-gray-900 font-semibold">Tasks completed</div>
+        <div className="text-xs text-gray-500">Based on current totals</div>
+      </div>
     </div>
   );
 }
@@ -144,53 +208,138 @@ export default function StatisticsPage() {
       {isAdmin ? (
         <div className="space-y-8">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <StatCard label="Users" value={adminStats.totalUsers} />
-            <StatCard label="Projects" value={adminStats.totalProjects} />
-            <StatCard label="Groups" value={adminStats.totalGroups} />
-            <StatCard label="Tasks" value={adminStats.totalTasks} />
-            <StatCard label="Completed" value={adminStats.completed} />
-            <StatCard label="Pending" value={adminStats.pending} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="p-4 rounded-xl border border-gray-200 bg-white">
-              <div className="font-semibold mb-3">Most Active Users</div>
-              {adminStats.mostActiveUsers.length === 0 ? (
-                <div className="text-sm text-gray-500">No data</div>
-              ) : (
-                <ul className="text-sm text-gray-800 space-y-1">
-                  {adminStats.mostActiveUsers.map(u => (
-                    <li key={u.id} className="flex justify-between"><span>{u.email}</span><span className="text-gray-500">{u.count}</span></li>
-                  ))}
-                </ul>
+            <StatCard
+              label="Users"
+              value={adminStats.totalUsers}
+              color="blue"
+              icon={(
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4.26a4 4 0 10-8 0 4 4 0 008 0z" />
+                </svg>
               )}
-            </div>
-            <div className="p-4 rounded-xl border border-gray-200 bg-white">
-              <div className="font-semibold mb-3">Most Active Groups</div>
-              {adminStats.mostActiveGroups.length === 0 ? (
-                <div className="text-sm text-gray-500">No data</div>
-              ) : (
-                <ul className="text-sm text-gray-800 space-y-1">
-                  {adminStats.mostActiveGroups.map(g => (
-                    <li key={g.id} className="flex justify-between"><span>{g.name}</span><span className="text-gray-500">{g.count}</span></li>
-                  ))}
-                </ul>
+            />
+            <StatCard
+              label="Projects"
+              value={adminStats.totalProjects}
+              color="purple"
+              icon={(
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 21h8m-4-4v4m-7-8h14l-7-8-7 8z" />
+                </svg>
               )}
-            </div>
+            />
+            <StatCard
+              label="Groups"
+              value={adminStats.totalGroups}
+              color="amber"
+              icon={(
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87M12 7a4 4 0 110-8 4 4 0 010 8z" />
+                </svg>
+              )}
+            />
+            <StatCard
+              label="Tasks"
+              value={adminStats.totalTasks}
+              color="slate"
+              icon={(
+                <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6M9 8h6m2 10a2 2 0 002-2V6a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h10z" />
+                </svg>
+              )}
+            />
+            <StatCard
+              label="Completed"
+              value={adminStats.completed}
+              color="green"
+              icon={(
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            />
+            <StatCard
+              label="Pending"
+              value={adminStats.pending}
+              color="rose"
+              icon={(
+                <svg className="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+            />
           </div>
-
+          {/* Distribution */}
           <div className="p-4 rounded-xl border border-gray-200 bg-white">
-            <div className="font-semibold mb-3">Daily Completions (last 14 days)</div>
-            <MiniBar values={adminStats.dailySeries} />
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold text-gray-900">Workload Overview</div>
+              <div className="text-sm text-gray-500">Distribution of tasks</div>
+            </div>
+            {adminStats.totalTasks === 0 ? (
+              <div className="text-sm text-gray-500">No tasks</div>
+            ) : (
+              <>
+                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                  <div className="h-3 bg-green-500" style={{ width: `${Math.round((adminStats.completed / adminStats.totalTasks) * 100)}%` }} />
+                  <div className="h-3 bg-yellow-400" style={{ width: `${Math.round((adminStats.pending / adminStats.totalTasks) * 100)}%` }} />
+                  <div className="h-3 bg-rose-400" style={{ width: `${Math.round(((adminStats.totalTasks - adminStats.completed - adminStats.pending) / adminStats.totalTasks) * 100)}%` }} />
+                </div>
+                <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-700">
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-green-500" /> Completed {adminStats.completed}</div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-yellow-400" /> Pending {adminStats.pending}</div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-rose-400" /> Overdue {Math.max(0, adminStats.totalTasks - adminStats.completed - adminStats.pending)}</div>
+                </div>
+              </>
+            )}
           </div>
+
+          {/* Completion rate ring */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <RingProgress
+              percent={adminStats.totalTasks === 0 ? 0 : Math.round((adminStats.completed / adminStats.totalTasks) * 100)}
+              label="Completion Rate"
+            />
+            <div className="p-4 rounded-xl border border-gray-200 bg-white">
+              <div className="font-semibold mb-3">Recent Completions (14 days)</div>
+              <MiniBar values={(() => {
+                // Rebuild quick series from adminStats.dailySeries if available
+                // Backward compatible in case it's undefined
+                const series = adminStats?.dailySeries || [];
+                return series.length ? series : [0];
+              })()} />
+              <div className="text-xs text-gray-500 mt-2">Number of tasks marked as done per day</div>
+            </div>
+          </div>
+          
         </div>
       ) : (
         <div className="space-y-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Assigned" value={memberStats.total} />
-            <StatCard label="Completed" value={memberStats.completed} />
-            <StatCard label="Pending" value={memberStats.pending} />
-            <StatCard label="Completion Rate" value={`${memberStats.rate}%`} />
+            <StatCard label="Assigned" value={memberStats.total} color="slate" icon={(<svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6M9 8h6m2 10a2 2 0 002-2V6a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h10z" /></svg>)} />
+            <StatCard label="Completed" value={memberStats.completed} color="green" icon={(<svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>)} />
+            <StatCard label="Pending" value={memberStats.pending} color="amber" icon={(<svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>)} />
+            <StatCard label="Completion Rate" value={`${memberStats.rate}%`} color="blue" icon={(<svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>)} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <RingProgress percent={memberStats.rate} label="My Completion Rate" />
+            <div className="p-4 rounded-xl border border-gray-200 bg-white">
+              <div className="font-semibold mb-3">My Workload</div>
+              {memberStats.total === 0 ? (
+                <div className="text-sm text-gray-500">No tasks</div>
+              ) : (
+                <>
+                  <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                    <div className="h-3 bg-green-500" style={{ width: `${Math.round((memberStats.completed / memberStats.total) * 100)}%` }} />
+                    <div className="h-3 bg-yellow-400" style={{ width: `${Math.round((memberStats.pending / memberStats.total) * 100)}%` }} />
+                  </div>
+                  <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-700">
+                    <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-green-500" /> Completed {memberStats.completed}</div>
+                    <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-yellow-400" /> Pending {memberStats.pending}</div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="p-4 rounded-xl border border-gray-200 bg-white">
