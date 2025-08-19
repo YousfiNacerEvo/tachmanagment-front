@@ -162,11 +162,11 @@ function ProjectsContent() {
   };
 
   const validateForm = async () => {
-    if (!form.title.trim() || !form.description.trim() || !form.start || !form.end) {
-      setFormError('All fields are required.');
+    if (!form.title.trim() || !form.description.trim()) {
+      setFormError('Title and description are required.');
       return false;
     }
-    if (form.end < form.start) {
+    if (form.end && form.start && form.end < form.start) {
       setFormError('End date cannot be before start date.');
       return false;
     }
@@ -403,8 +403,8 @@ function ProjectsContent() {
   };
 
   const handleUpdate = async (e) => {
-    e.preventDefault();
-    let validation = validateForm();
+    if (typeof e?.preventDefault === 'function') e.preventDefault();
+    let validation = await validateForm();
     if (!validation) {
       setFormLoading(false);
       return;

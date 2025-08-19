@@ -120,6 +120,15 @@ export default function TaskLoadOverviewPage() {
   }, [tasks, users, userGroupIdsMap]);
 
   const userRows = useMemo(() => {
+    const normalizeStatus = (status) => {
+      const s = (status || '').toLowerCase();
+      if (s === 'terminé' || s === 'completed' || s === 'done') return 'done';
+      if (s === 'in_progress' || s === 'in progress') return 'in progress';
+      if (s === 'pending' || s === 'à faire' || s === 'to do') return 'to do';
+      if (s === 'overdue') return 'overdue';
+      return s;
+    };
+
     return (users || []).map(u => {
       const directArr = tasksDirectByUserId.get(u.id) || [];
       const viaArr = tasksViaGroupByUserId.get(u.id) || [];
@@ -131,8 +140,16 @@ export default function TaskLoadOverviewPage() {
       const totalIds = new Set([...directIds, ...viaIds]);
       const totalArr = [...totalIds].map(id => (directArr.find(t => t.id === id) || viaArr.find(t => t.id === id)));
       const total = totalArr.length;
-      const completed = totalArr.filter(t => (t.status || '').toLowerCase() === 'done' || (t.status || '').toLowerCase() === 'terminé').length;
-      const pending = total - completed;
+
+      let completed = 0;
+      let overdue = 0;
+      for (const t of totalArr) {
+        const ns = normalizeStatus(t.status);
+        if (ns === 'done') completed += 1;
+        else if (ns === 'overdue') overdue += 1;
+      }
+      const pending = Math.max(0, total - completed - overdue);
+
       return {
         id: u.id,
         email: u.email,
@@ -140,6 +157,7 @@ export default function TaskLoadOverviewPage() {
         via: viaOnlyIds.size,
         total,
         completed,
+        overdue,
         pending
       };
     });
@@ -236,6 +254,7 @@ export default function TaskLoadOverviewPage() {
                     <th className="py-2 pr-4 cursor-pointer" onClick={() => setSort('direct')}>Direct</th>
                     <th className="py-2 pr-4 cursor-pointer" onClick={() => setSort('via')}>Via groups</th>
                     <th className="py-2 pr-4 cursor-pointer" onClick={() => setSort('completed')}>Completed</th>
+                    <th className="py-2 pr-4 cursor-pointer" onClick={() => setSort('overdue')}>Overdue</th>
                     <th className="py-2 pr-4 cursor-pointer" onClick={() => setSort('pending')}>Pending</th>
                     <th className="py-2 pr-4 cursor-pointer" onClick={() => setSort('total')}>Total</th>
                     {/* <th className="py-2 pr-4">Progress</th> */}
@@ -248,6 +267,7 @@ export default function TaskLoadOverviewPage() {
                       <td className="py-2 pr-4">{row.direct}</td>
                       <td className="py-2 pr-4">{row.via}</td>
                       <td className="py-2 pr-4 text-green-700">{row.completed}</td>
+                      <td className="py-2 pr-4 text-rose-700">{row.overdue}</td>
                       <td className="py-2 pr-4 text-yellow-700">{row.pending}</td>
                       <td className="py-2 pr-4">{row.total}</td>
                       {/* <td className="py-2 pr-4 w-48">

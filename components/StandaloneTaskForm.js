@@ -23,6 +23,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
   });
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [projectAssignees, setProjectAssignees] = useState({ users: [], groups: [] });
   const [uploading, setUploading] = useState(false);
   const [fileReloadTick, setFileReloadTick] = useState(0);
@@ -106,6 +107,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
       [name]: value
     }));
     setError(null);
+    setFieldErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const handleUserChange = (e) => {
@@ -140,21 +142,23 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
     
     // Pour les admins ou la création de nouvelles tâches
     // Validation
+    const errors = {};
     if (!form.title.trim()) {
-      setError('Title is required');
-      return;
+      errors.title = 'Title is required';
     }
-    
     if (!form.description.trim()) {
-      setError('Description is required for standalone tasks');
-      return;
+      errors.description = 'Description is required for standalone tasks';
     }
-
     // Check if at least one user or group is assigned
-    if (form.user_ids.length === 0 && form.group_ids.length === 0) {
-      setError('Please assign at least one user or group');
+    if ((form.user_ids || []).length === 0 && (form.group_ids || []).length === 0) {
+      errors.assignees = 'Please assign at least one user or group';
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError('Please fill the required fields.');
       return;
     }
+    setFieldErrors({});
 
     try {
       await onSubmit(form);
@@ -227,13 +231,16 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
             name="title"
             value={form.title}
             onChange={handleChange}
-            className={`w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 rounded border ${fieldErrors.title ? 'border-red-500' : 'border-gray-300'} bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               !isAdmin ? 'bg-gray-100 cursor-not-allowed' : ''
             }`}
             placeholder="Enter task title"
             required
             disabled={!isAdmin}
           />
+          {fieldErrors.title && (
+            <div className="mt-1 text-xs text-red-600">{fieldErrors.title}</div>
+          )}
         </div>
 
         <div>
@@ -245,13 +252,16 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
             value={form.description}
             onChange={handleChange}
             rows={3}
-            className={`w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+            className={`w-full px-3 py-2 rounded border ${fieldErrors.description ? 'border-red-500' : 'border-gray-300'} bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
               !isAdmin ? 'bg-gray-100 cursor-not-allowed' : ''
             }`}
             placeholder="Enter task description"
             required
             disabled={!isAdmin}
           />
+          {fieldErrors.description && (
+            <div className="mt-1 text-xs text-red-600">{fieldErrors.description}</div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -326,11 +336,14 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
         <ModernAssigneeSelector
           assignedUsers={form.user_ids}
           assignedGroups={form.group_ids}
-          onChangeUsers={user_ids => setForm(prev => ({ ...prev, user_ids }))}
-          onChangeGroups={group_ids => setForm(prev => ({ ...prev, group_ids }))}
+          onChangeUsers={user_ids => { setFieldErrors(prev => ({ ...prev, assignees: null })); setForm(prev => ({ ...prev, user_ids })); }}
+          onChangeGroups={group_ids => { setFieldErrors(prev => ({ ...prev, assignees: null })); setForm(prev => ({ ...prev, group_ids })); }}
           disabled={loading || !isAdmin}
           label="Assign to"
         />
+        {fieldErrors.assignees && (
+          <div className="mt-1 text-xs text-red-600">{fieldErrors.assignees}</div>
+        )}
 
         {/* Files (optional during creation) */}
         {!task && (

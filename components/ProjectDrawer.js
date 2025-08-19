@@ -19,14 +19,34 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
     status: 'to do',
     priority: 'medium',
     deadline: '',
+    progress: 0,
     user_ids: [],
     group_ids: [],
     files: [],
   });
+  const [taskError, setTaskError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    // Validation: Title, Deadline, and Assignation are required
+    const errors = {};
+    if (!form.title.trim()) {
+      errors.title = 'Title is required.';
+    }
+    if (!form.deadline) {
+      errors.deadline = 'Deadline is required.';
+    }
+    if ((form.user_ids || []).length === 0 && (form.group_ids || []).length === 0) {
+      errors.assignees = 'Please assign at least one user or group.';
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setTaskError('Please fill the required fields.');
+      return;
+    }
+    setTaskError(null);
+    setFieldErrors({});
     onAdd(form);
   };
 
@@ -36,42 +56,82 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
         {initial ? 'Edit Task' : 'Add New Task'}
       </h4>
       <div className="space-y-3">
+        {taskError && (
+          <div className="bg-red-500/20 border border-red-500/40 text-red-200 px-3 py-2 rounded text-sm">
+            {taskError}
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input
-            type="text"
-            placeholder="Task title"
-            value={form.title}
-            onChange={e => setForm({ ...form, title: e.target.value })}
-            className="flex-1 px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white placeholder-gray-400"
-            required
-          />
-          <select
-            value={form.status}
-            onChange={e => setForm({ ...form, status: e.target.value })}
-            className="px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
-          >
-            <option value="to do">To do</option>
-            <option value="in progress">In progress</option>
-            <option value="done">Done</option>
-          </select>
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">Title <span className="text-red-500">*</span></label>
+            <input
+              type="text"
+              placeholder="Task title"
+              value={form.title}
+              onChange={e => { setTaskError(null); setFieldErrors(prev => ({ ...prev, title: null })); setForm({ ...form, title: e.target.value }); }}
+              className={`w-full px-3 py-2 rounded bg-[#18181b] border ${fieldErrors.title ? 'border-red-500' : 'border-gray-600'} text-white placeholder-gray-400`}
+              required
+            />
+            {fieldErrors.title && (
+              <div className="mt-1 text-xs text-red-400">{fieldErrors.title}</div>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">Status</label>
+            <select
+              value={form.status}
+              onChange={e => setForm({ ...form, status: e.target.value })}
+              className="w-full px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
+            >
+              <option value="to do">To do</option>
+              <option value="in progress">In progress</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">Priority</label>
+            <select
+              value={form.priority}
+              onChange={e => setForm({ ...form, priority: e.target.value })}
+              className="w-full px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
+            >
+              <option value="low">Low Priority</option>
+              <option value="medium">Medium Priority</option>
+              <option value="high">High Priority</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">Deadline <span className="text-red-500">*</span></label>
+            <input
+              type="date"
+              value={form.deadline}
+              onChange={e => { setFieldErrors(prev => ({ ...prev, deadline: null })); setForm({ ...form, deadline: e.target.value }); }}
+              className={`w-full px-3 py-2 rounded bg-[#18181b] border ${fieldErrors.deadline ? 'border-red-500' : 'border-gray-600'} text-white`}
+              required
+            />
+            {fieldErrors.deadline && (
+              <div className="mt-1 text-xs text-red-400">{fieldErrors.deadline}</div>
+            )}
+          </div>
+        </div>
+
+        {/* Task progress (lightweight UI) */}
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Task Progress</label>
           <select
-            value={form.priority}
-            onChange={e => setForm({ ...form, priority: e.target.value })}
-            className="px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
+            value={form.progress || 0}
+            onChange={e => setForm({ ...form, progress: Number(e.target.value) })}
+            className="w-32 px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
           >
-            <option value="low">Low Priority</option>
-            <option value="medium">Medium Priority</option>
-            <option value="high">High Priority</option>
+            <option value={0}>0%</option>
+            <option value={25}>25%</option>
+            <option value={50}>50%</option>
+            <option value={75}>75%</option>
+            <option value={100}>100%</option>
           </select>
-          <input
-            type="date"
-            value={form.deadline}
-            onChange={e => setForm({ ...form, deadline: e.target.value })}
-            className="px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
-          />
         </div>
         
         {/* Assignation moderne - seulement pour les admins */}
@@ -79,20 +139,26 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
           <ModernAssigneeSelector
             assignedUsers={form.user_ids || []}
             assignedGroups={form.group_ids || []}
-            onChangeUsers={user_ids => setForm({ ...form, user_ids })}
-            onChangeGroups={group_ids => setForm({ ...form, group_ids })}
+            onChangeUsers={user_ids => { setTaskError(null); setFieldErrors(prev => ({ ...prev, assignees: null })); setForm({ ...form, user_ids }); }}
+            onChangeGroups={group_ids => { setTaskError(null); setFieldErrors(prev => ({ ...prev, assignees: null })); setForm({ ...form, group_ids }); }}
             disabled={false}
-            label="Assign to"
+            label={<span>Assign to <span className="text-red-500">*</span></span>}
           />
         )}
+        {fieldErrors.assignees && (
+          <div className="mt-1 text-xs text-red-400">{fieldErrors.assignees}</div>
+        )}
         
-        <textarea
-          placeholder="Task description (optional)"
-          value={form.description}
-          onChange={e => setForm({ ...form, description: e.target.value })}
-          rows={2}
-          className="w-full px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white placeholder-gray-400 resize-none"
-        />
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Description</label>
+          <textarea
+            placeholder="Task description (optional)"
+            value={form.description}
+            onChange={e => setForm({ ...form, description: e.target.value })}
+            rows={2}
+            className="w-full px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white placeholder-gray-400 resize-none"
+          />
+        </div>
 
         {/* Optional files during creation/update inside drawer */}
         <div>
@@ -145,10 +211,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
         <div className="flex gap-2">
           <button 
             type="button"
-            onClick={() => {
-              if (!form.title.trim()) return;
-              onAdd(form);
-            }}
+            onClick={handleSubmit}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-medium"
           >
             {initial ? 'Update Task' : 'Add Task'}
@@ -425,7 +488,7 @@ export default function ProjectDrawer({
                 aria-label="Close"
                 disabled={loading}
               >
-                ×
+                F
               </button>
             </div>
           </div>
@@ -470,27 +533,33 @@ export default function ProjectDrawer({
                 <h2 className="text-2xl font-bold mb-1 text-white col-span-2">
                   {editMode ? 'Edit Project' : 'Create Project'}
                 </h2>
-                <input
-                  name="title"
-                  value={form.title}
-                  onChange={onChange}
-                  placeholder="Title"
-                  required
-                  className="px-4 py-2 rounded border border-gray-600 bg-[#18181b] text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  disabled={loading}
-                />
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={onChange}
-                  placeholder="Description"
-                  required
-                  className="px-4 py-2 rounded border border-gray-600 bg-[#18181b] text-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-                  rows={4}
-                  disabled={loading}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Title <span className="text-red-500">*</span></label>
+                  <input
+                    name="title"
+                    value={form.title}
+                    onChange={onChange}
+                    placeholder="Title"
+                    required
+                    className="w-full px-4 py-2 rounded border border-gray-600 bg-[#18181b] text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    disabled={loading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Description <span className="text-red-500">*</span></label>
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={onChange}
+                    placeholder="Description"
+                    required
+                    className="w-full px-4 py-2 rounded border border-gray-600 bg-[#18181b] text-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                    rows={4}
+                    disabled={loading}
+                  />
+                </div>
                 {/* Progression du projet */}
-                <label className="block text-sm font-medium text-white mb-1">Project Progress</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Project Progress</label>
                 <div className="flex items-center gap-4">
                   <select
                     value={form.progress || 0}
@@ -524,31 +593,40 @@ export default function ProjectDrawer({
               <div className="flex flex-col gap-4">
                 {/* Assignation moderne utilisateurs & groupes */}
                 
-                <select
-                  name="status"
-                  value={form.status}
-                  onChange={onChange}
-                  className="w-full px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="done">Done</option>
-                </select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Status</label>
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={onChange}
+                    className="w-full px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
                 <div className="flex gap-2">
-                  <input
-                    type="date"
-                    name="start"
-                    value={form.start}
-                    onChange={onChange}
-                    className="w-1/2 px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
-                  />
-                  <input
-                    type="date"
-                    name="end"
-                    value={form.end}
-                    onChange={onChange}
-                    className="w-1/2 px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
-                  />
+                  <div className="w-1/2">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Start Date <span className="text-red-500">*</span></label>
+                    <input
+                      type="date"
+                      name="start"
+                      value={form.start}
+                      onChange={onChange}
+                      className="w-full px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
+                    />
+                  </div>
+                  <div className="w-1/2">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">End Date <span className="text-red-500">*</span></label>
+                    <input
+                      type="date"
+                      name="end"
+                      value={form.end}
+                      onChange={onChange}
+                      className="w-full px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
+                    />
+                  </div>
                 </div>
                 <ModernAssigneeSelector
                   assignedUsers={form.user_ids || []}
@@ -556,7 +634,7 @@ export default function ProjectDrawer({
                   onChangeUsers={user_ids => onChange({ target: { name: 'user_ids', value: user_ids } })}
                   onChangeGroups={group_ids => onChange({ target: { name: 'group_ids', value: group_ids } })}
                   disabled={loading}
-                  label="Assign to"
+                  label={"Assign to"}
                 />
                 {/* Project files handling */}
                 {editMode && (form?.id || form?._id) ? (

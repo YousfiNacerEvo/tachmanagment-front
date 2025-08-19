@@ -4,21 +4,32 @@ import Link from 'next/link';
 
 export default function ProjectTable({ projects, onEdit, pageSize = 10 }) {
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil((projects?.length || 0) / pageSize));
+  const normalizedProjects = Array.isArray(projects) ? projects : [];
+  const sortedProjects = [...normalizedProjects].sort((a, b) => {
+    const getDate = (p) => new Date(p?.created_at || p?.createdAt || p?.start || 0).getTime();
+    const dateB = getDate(b);
+    const dateA = getDate(a);
+    if (dateB !== dateA) return dateB - dateA; // Newest first
+    // Fallback deterministic order when dates are equal/missing
+    const idB = String(b?.id || b?._id || '');
+    const idA = String(a?.id || a?._id || '');
+    return idB.localeCompare(idA) * -1;
+  });
+  const totalPages = Math.max(1, Math.ceil(sortedProjects.length / pageSize));
 
   useEffect(() => {
     setCurrentPage(1);
   }, [projects, pageSize]);
 
   const startIndex = (currentPage - 1) * pageSize;
-  const currentProjects = (projects || []).slice(startIndex, startIndex + pageSize);
+  const currentProjects = sortedProjects.slice(startIndex, startIndex + pageSize);
 
   const goPrev = () => setCurrentPage((p) => Math.max(1, p - 1));
   const goNext = () => setCurrentPage((p) => Math.min(totalPages, p + 1));
 
   return (
     <div className="overflow-x-auto rounded-2xl shadow-sm border border-gray-200 bg-white">
-      <table className="min-w-full text-left text-sm text-gray-900">
+      <table className="min-w-full text-left text-sm text-gray-900" data-testid="project-table">
         <thead>
           <tr className="bg-gray-100">
             <th className="px-4 py-3">Name</th>

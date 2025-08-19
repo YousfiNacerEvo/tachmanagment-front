@@ -137,7 +137,7 @@ export default function ModernAssigneeSelector({
 
   return (
     <div className="mb-4" ref={containerRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 mb-2">{label}<span className="text-red-500">*</span></label>
       
       {/* Message d'erreur */}
       {error && (

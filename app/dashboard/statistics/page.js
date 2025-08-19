@@ -142,9 +142,31 @@ export default function StatisticsPage() {
     const totalProjects = projects.length;
     const totalGroups = groups.length;
     const totalTasks = tasks.length;
-    const completed = tasks.filter(t => (t.status || '').toLowerCase() === 'done' || (t.status || '').toLowerCase() === 'terminé').length;
-    const overdue = tasks.filter(t => (t.status || '').toLowerCase() === 'overdue').length;
-    const pending = totalTasks - completed - overdue;
+
+    const normalizeStatus = (status) => {
+      const s = (status || '').toLowerCase();
+      if (s === 'terminé' || s === 'completed' || s === 'done') return 'done';
+      if (s === 'in_progress' || s === 'in progress') return 'in progress';
+      if (s === 'pending' || s === 'à faire' || s === 'to do') return 'to do';
+      if (s === 'overdue') return 'overdue';
+      return s;
+    };
+
+    let toDoCount = 0;
+    let inProgressCount = 0;
+    let doneCount = 0;
+    let overdueCount = 0;
+    for (const t of tasks) {
+      const ns = normalizeStatus(t.status);
+      if (ns === 'to do') toDoCount += 1;
+      else if (ns === 'in progress') inProgressCount += 1;
+      else if (ns === 'done') doneCount += 1;
+      else if (ns === 'overdue') overdueCount += 1;
+    }
+
+    const completed = doneCount;
+    const overdue = overdueCount;
+    const pending = toDoCount + inProgressCount; // keep legacy aggregate for existing cards
 
     // Most active users: by number of tasks (direct assignees)
     const userCount = new Map();
@@ -185,7 +207,7 @@ export default function StatisticsPage() {
     }
     const dailySeries = Array.from(completedByDay.values());
 
-    return { totalUsers, totalProjects, totalGroups, totalTasks, completed, pending, overdue, mostActiveUsers, mostActiveGroups, dailySeries };
+    return { totalUsers, totalProjects, totalGroups, totalTasks, completed, pending, overdue, toDoCount, inProgressCount, doneCount, overdueCount, mostActiveUsers, mostActiveGroups, dailySeries };
   }, [isAdmin, users, projects, groups, tasks]);
 
   // Member/guest stats
@@ -259,11 +281,11 @@ export default function StatisticsPage() {
               )}
             />
             <StatCard
-              label="Pending"
-              value={adminStats.pending}
-              color="rose"
+              label="In Progress"
+              value={adminStats.inProgressCount}
+              color="amber"
               icon={(
-                <svg className="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               )}
@@ -273,21 +295,23 @@ export default function StatisticsPage() {
           <div className="p-4 rounded-xl border border-gray-200 bg-white">
             <div className="flex items-center justify-between mb-3">
               <div className="font-semibold text-gray-900">Workload Overview</div>
-              <div className="text-sm text-gray-500">Distribution of tasks</div>
+              <div className="text-sm text-gray-500">Distribution of tasks by status</div>
             </div>
             {adminStats.totalTasks === 0 ? (
               <div className="text-sm text-gray-500">No tasks</div>
             ) : (
               <>
-                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                  <div className="h-3 bg-green-500" style={{ width: `${Math.round((adminStats.completed / adminStats.totalTasks) * 100)}%` }} />
-                  <div className="h-3 bg-yellow-400" style={{ width: `${Math.round((adminStats.pending / adminStats.totalTasks) * 100)}%` }} />
-                  <div className="h-3 bg-rose-400" style={{ width: `${Math.round(((adminStats.totalTasks - adminStats.completed - adminStats.pending) / adminStats.totalTasks) * 100)}%` }} />
+                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex">
+                  <div className="h-3 bg-blue-400" style={{ width: `${Math.round((adminStats.toDoCount / adminStats.totalTasks) * 100)}%` }} />
+                  <div className="h-3 bg-yellow-400" style={{ width: `${Math.round((adminStats.inProgressCount / adminStats.totalTasks) * 100)}%` }} />
+                  <div className="h-3 bg-green-500" style={{ width: `${Math.round((adminStats.doneCount / adminStats.totalTasks) * 100)}%` }} />
+                  <div className="h-3 bg-rose-400" style={{ width: `${Math.round((adminStats.overdueCount / adminStats.totalTasks) * 100)}%` }} />
                 </div>
                 <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-700">
-                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-green-500" /> Completed {adminStats.completed}</div>
-                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-yellow-400" /> Pending {adminStats.pending}</div>
-                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-rose-400" /> Overdue {Math.max(0, adminStats.totalTasks - adminStats.completed - adminStats.pending)}</div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-400" /> To do {adminStats.toDoCount}</div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-yellow-400" /> In progress {adminStats.inProgressCount}</div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-green-500" /> Done {adminStats.doneCount}</div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-rose-400" /> Overdue {adminStats.overdueCount}</div>
                 </div>
               </>
             )}
@@ -299,16 +323,7 @@ export default function StatisticsPage() {
               percent={adminStats.totalTasks === 0 ? 0 : Math.round((adminStats.completed / adminStats.totalTasks) * 100)}
               label="Completion Rate"
             />
-            <div className="p-4 rounded-xl border border-gray-200 bg-white">
-              <div className="font-semibold mb-3">Recent Completions (14 days)</div>
-              <MiniBar values={(() => {
-                // Rebuild quick series from adminStats.dailySeries if available
-                // Backward compatible in case it's undefined
-                const series = adminStats?.dailySeries || [];
-                return series.length ? series : [0];
-              })()} />
-              <div className="text-xs text-gray-500 mt-2">Number of tasks marked as done per day</div>
-            </div>
+            
           </div>
           
         </div>

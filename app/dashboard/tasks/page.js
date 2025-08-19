@@ -313,14 +313,24 @@ function TasksContent() {
     const [taskGroups, setTaskGroups] = useState({});
     const [loadingGroups, setLoadingGroups] = useState({});
     const [currentPage, setCurrentPage] = useState(1);
-    const totalPages = Math.max(1, Math.ceil((tasks?.length || 0) / pageSize));
+    const normalizedTasks = Array.isArray(tasks) ? tasks : [];
+    const sortedTasks = [...normalizedTasks].sort((a, b) => {
+      const getDate = (t) => new Date(t?.created_at || t?.createdAt || t?.deadline || 0).getTime();
+      const dateB = getDate(b);
+      const dateA = getDate(a);
+      if (dateB !== dateA) return dateB - dateA; // Newest first
+      const idB = String(b?.id || '');
+      const idA = String(a?.id || '');
+      return idB.localeCompare(idA) * -1;
+    });
+    const totalPages = Math.max(1, Math.ceil(sortedTasks.length / pageSize));
 
     useEffect(() => {
       setCurrentPage(1);
     }, [tasks, pageSize]);
 
     const startIndex = (currentPage - 1) * pageSize;
-    const currentTasks = (tasks || []).slice(startIndex, startIndex + pageSize);
+    const currentTasks = sortedTasks.slice(startIndex, startIndex + pageSize);
 
     const goPrev = () => setCurrentPage(p => Math.max(1, p - 1));
     const goNext = () => setCurrentPage(p => Math.min(totalPages, p + 1));
