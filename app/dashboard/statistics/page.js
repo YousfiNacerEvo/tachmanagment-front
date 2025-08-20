@@ -143,6 +143,28 @@ export default function StatisticsPage() {
     const totalGroups = groups.length;
     const totalTasks = tasks.length;
 
+    // Project status analysis
+    const normalizeProjectStatus = (status) => {
+      const s = (status || '').toLowerCase();
+      if (s === 'terminé' || s === 'completed' || s === 'done') return 'done';
+      if (s === 'in_progress' || s === 'in progress') return 'in progress';
+      if (s === 'pending' || s === 'à faire' || s === 'to do') return 'pending';
+      return s;
+    };
+
+    let projectPendingCount = 0;
+    let projectInProgressCount = 0;
+    let projectDoneCount = 0;
+    for (const p of projects) {
+      const ns = normalizeProjectStatus(p.status);
+      if (ns === 'pending') projectPendingCount += 1;
+      else if (ns === 'in progress') projectInProgressCount += 1;
+      else if (ns === 'done') projectDoneCount += 1;
+    }
+
+    const projectCompleted = projectDoneCount;
+    const projectCompletionRate = totalProjects === 0 ? 0 : Math.round((projectCompleted / totalProjects) * 100);
+
     const normalizeStatus = (status) => {
       const s = (status || '').toLowerCase();
       if (s === 'terminé' || s === 'completed' || s === 'done') return 'done';
@@ -207,7 +229,27 @@ export default function StatisticsPage() {
     }
     const dailySeries = Array.from(completedByDay.values());
 
-    return { totalUsers, totalProjects, totalGroups, totalTasks, completed, pending, overdue, toDoCount, inProgressCount, doneCount, overdueCount, mostActiveUsers, mostActiveGroups, dailySeries };
+    return { 
+      totalUsers, 
+      totalProjects, 
+      totalGroups, 
+      totalTasks, 
+      completed, 
+      pending, 
+      overdue, 
+      toDoCount, 
+      inProgressCount, 
+      doneCount, 
+      overdueCount, 
+      projectCompleted,
+      projectCompletionRate,
+      projectPendingCount,
+      projectInProgressCount,
+      projectDoneCount,
+      mostActiveUsers, 
+      mostActiveGroups, 
+      dailySeries 
+    };
   }, [isAdmin, users, projects, groups, tasks]);
 
   // Member/guest stats
@@ -229,7 +271,7 @@ export default function StatisticsPage() {
 
       {isAdmin ? (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-5 md:grid-cols-4 lg:grid-cols-6 gap-4 w-full">
             <StatCard
               label="Users"
               value={adminStats.totalUsers}
@@ -237,16 +279,6 @@ export default function StatisticsPage() {
               icon={(
                 <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4.26a4 4 0 10-8 0 4 4 0 008 0z" />
-                </svg>
-              )}
-            />
-            <StatCard
-              label="Projects"
-              value={adminStats.totalProjects}
-              color="purple"
-              icon={(
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 21h8m-4-4v4m-7-8h14l-7-8-7 8z" />
                 </svg>
               )}
             />
@@ -261,6 +293,16 @@ export default function StatisticsPage() {
               )}
             />
             <StatCard
+              label="Projects"
+              value={adminStats.totalProjects}
+              color="purple"
+              icon={(
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 21h8m-4-4v4m-7-8h14l-7-8-7 8z" />
+                </svg>
+              )}
+            />
+             <StatCard
               label="Tasks"
               value={adminStats.totalTasks}
               color="slate"
@@ -271,7 +313,19 @@ export default function StatisticsPage() {
               )}
             />
             <StatCard
-              label="Completed"
+              label="Completed Projects"
+              value={adminStats.projectCompleted}
+              color="green"
+              icon={(
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            />
+            
+           
+            <StatCard
+              label="Completed (tasks)"
               value={adminStats.completed}
               color="green"
               icon={(
@@ -280,21 +334,12 @@ export default function StatisticsPage() {
                 </svg>
               )}
             />
-            <StatCard
-              label="In Progress"
-              value={adminStats.inProgressCount}
-              color="amber"
-              icon={(
-                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )}
-            />
+          
           </div>
-          {/* Distribution */}
+          {/* Task Distribution */}
           <div className="p-4 rounded-xl border border-gray-200 bg-white">
             <div className="flex items-center justify-between mb-3">
-              <div className="font-semibold text-gray-900">Workload Overview</div>
+              <div className="font-semibold text-gray-900">Task Workload Overview</div>
               <div className="text-sm text-gray-500">Distribution of tasks by status</div>
             </div>
             {adminStats.totalTasks === 0 ? (
@@ -317,13 +362,40 @@ export default function StatisticsPage() {
             )}
           </div>
 
-          {/* Completion rate ring */}
+          {/* Project Distribution */}
+          <div className="p-4 rounded-xl border border-gray-200 bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold text-gray-900">Project Workload Overview</div>
+              <div className="text-sm text-gray-500">Distribution of projects by status</div>
+            </div>
+            {adminStats.totalProjects === 0 ? (
+              <div className="text-sm text-gray-500">No projects</div>
+            ) : (
+              <>
+                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex">
+                  <div className="h-3 bg-blue-400" style={{ width: `${Math.round((adminStats.projectPendingCount / adminStats.totalProjects) * 100)}%` }} />
+                  <div className="h-3 bg-yellow-400" style={{ width: `${Math.round((adminStats.projectInProgressCount / adminStats.totalProjects) * 100)}%` }} />
+                  <div className="h-3 bg-green-500" style={{ width: `${Math.round((adminStats.projectDoneCount / adminStats.totalProjects) * 100)}%` }} />
+                </div>
+                <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-700">
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-400" /> Pending {adminStats.projectPendingCount}</div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-yellow-400" /> In progress {adminStats.projectInProgressCount}</div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-green-500" /> Completed {adminStats.projectDoneCount}</div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Completion rate rings */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <RingProgress
               percent={adminStats.totalTasks === 0 ? 0 : Math.round((adminStats.completed / adminStats.totalTasks) * 100)}
-              label="Completion Rate"
+              label="Task Completion Rate"
             />
-            
+            <RingProgress
+              percent={adminStats.projectCompletionRate}
+              label="Project Completion Rate"
+            />
           </div>
           
         </div>

@@ -15,25 +15,19 @@ export default function LoginPage() {
   useEffect(() => {
     if (!user) return;
     
-    // Redirection immédiate basée sur le cache local si disponible
-    try {
-      if (typeof window !== 'undefined' && user?.id) {
-        const cached = window.localStorage.getItem(`tach:lastRole:${user.id}`);
-        if (cached === 'admin') {
-          router.replace('/dashboard/projects');
-          return;
-        }
-        if (cached === 'member' || cached === 'guest') {
-          router.replace('/dashboard/my-work');
-          return;
-        }
-      }
-    } catch (_) {}
+    // Si le rôle est connu, redirection fiable
+    if (role === 'admin') {
+      router.replace('/dashboard/projects');
+      return;
+    }
+    if (role === 'member' || role === 'guest') {
+      router.replace('/dashboard/my-work');
+      return;
+    }
     
-    // Si pas de cache, rediriger vers my-work par défaut (plus sûr que d'attendre)
-    // Le rôle sera mis à jour en arrière-plan et les pages s'adapteront
-    router.replace('/dashboard/my-work');
-  }, [user, router]);
+    // Si le rôle n'est pas encore résolu, ne pas rediriger par défaut ici.
+    // La redirection sera gérée par la page d'accueil ou dès que le rôle est déterminé.
+  }, [user, role, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

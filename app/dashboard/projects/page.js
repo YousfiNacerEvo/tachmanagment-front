@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser, assignGroupToProject, unassignGroupFromProject, getGroupsByProject, getGroupMembers, addProjectFiles, notifyProjectCreated } from '../../../lib/api';
+import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser, assignGroupToProject, unassignGroupFromProject, getGroupsByProject, getGroupMembers, addProjectFiles, notifyProjectCreated, addTaskFiles } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
 import ProjectDrawer from '../../../components/ProjectDrawer';
 import ProjectHeaderTabs from '../../../components/ProjectHeaderTabs';
@@ -283,13 +283,46 @@ function ProjectsContent() {
         console.log('📝 Création des tâches associées...');
         await Promise.all(formTasks.map(async (task) => {
           try {
-            const taskWithoutProgress = { ...task };
-            await createTask(
+            // Ne pas envoyer les File objets dans le body JSON
+            const { files: taskFiles = [], ...taskWithoutFiles } = task || {};
+            const taskWithoutProgress = { ...taskWithoutFiles };
+            const createdTask = await createTask(
               { ...taskWithoutProgress, project_id: createdProject.id || createdProject._id },
               task.user_ids || [],
               task.group_ids || task.groups || [],
               session
             );
+
+            // Upload des fichiers sélectionnés pour cette tâche, puis persistance via l'API
+            if (createdTask?.id && Array.isArray(taskFiles) && taskFiles.length > 0) {
+              const uploaded = [];
+              for (const file of taskFiles) {
+                if (!file || typeof file !== 'object' || typeof file.name !== 'string') continue;
+                const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
+                const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
+                const path = `tasks/${createdTask.id}/${filename}`;
+                const { error: upErr } = await supabase.storage
+                  .from('filesmanagment')
+                  .upload(path, file, { contentType: file.type || 'application/octet-stream' });
+                if (upErr) throw upErr;
+                const { data: signed } = await supabase.storage
+                  .from('filesmanagment')
+                  .createSignedUrl(path, 60 * 60 * 24 * 7);
+                uploaded.push({
+                  name: file.name,
+                  path,
+                  url: signed?.signedUrl || '',
+                  size: file.size,
+                  type: file.type || 'application/octet-stream',
+                  uploaded_at: new Date().toISOString(),
+                });
+              }
+              try {
+                await addTaskFiles(createdTask.id, uploaded, session);
+              } catch (e) {
+                console.error('[handleCreate][tasks] addTaskFiles failed:', e);
+              }
+            }
           } catch (err) {
             console.error('Erreur lors de la création d\'une tâche associée :', err);
             toast.error('Error while creating an associated task: ' + (err.message || err));

@@ -261,8 +261,8 @@ export default function FileManager({
           <div className="text-gray-400 text-center py-3">No files uploaded.</div>
         ) : (
           <ul className="divide-y divide-[#222733] rounded-lg overflow-hidden bg-[#121622] border border-[#222733]">
-            {items.map((it) => (
-              <li key={it.path} className="p-3 text-white flex items-center gap-3 hover:bg-[#161b26]">
+            {items.map((it, i) => (
+              <li key={`${it?.path || it?.name || 'file'}-${i}`} className="p-3 text-white flex items-center gap-3 hover:bg-[#161b26]">
                 <div className="text-xl select-none" title={it.type}>{fileIconByMime(it.type)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate" title={it.name}>{it.name}</div>

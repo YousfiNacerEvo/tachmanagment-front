@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import { getTasksByProject, getTasksByProjectWithAssignees, createTask, updateTask, deleteTask, updateProject, addTaskFiles } from '../lib/api';
+import { getTasksByProject, getTasksByProjectWithAssignees, createTask, updateTask, deleteTask, updateProject, addTaskFiles, getTaskFiles, deleteTaskFile } from '../lib/api';
 import { getUsers } from '../lib/api';
 import { toast } from 'react-hot-toast';
 import ModernAssigneeSelector from './ModernAssigneeSelector';
@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 
 
 function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false }) {
+  const { session } = useAuth();
   
   const [form, setForm] = useState(initial || {
     title: '',
@@ -26,6 +27,40 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
   });
   const [taskError, setTaskError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [persistedFiles, setPersistedFiles] = useState([]);
+  const [persistedBusy, setPersistedBusy] = useState(false);
+
+  // Load existing files for the task when editing
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!initial?.id || !session) {
+        setPersistedFiles([]);
+        return;
+      }
+      setPersistedBusy(true);
+      try {
+        const files = await getTaskFiles(initial.id, session);
+        if (mounted) setPersistedFiles(Array.isArray(files) ? files : []);
+      } catch (_) {
+        if (mounted) setPersistedFiles([]);
+      } finally {
+        if (mounted) setPersistedBusy(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [initial?.id, session]);
+
+  const handleRemovePersisted = async (path) => {
+    if (!initial?.id || !path) return;
+    try {
+      await deleteTaskFile(initial.id, path, session);
+      setPersistedFiles(prev => prev.filter(f => f?.path !== path));
+    } catch (e) {
+      // keep silent in UI; parent toasts elsewhere
+      console.error('[TaskMiniForm] Failed to delete file', e);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -121,17 +156,33 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
         {/* Task progress (lightweight UI) */}
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Task Progress</label>
-          <select
-            value={form.progress || 0}
-            onChange={e => setForm({ ...form, progress: Number(e.target.value) })}
-            className="w-32 px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
-          >
-            <option value={0}>0%</option>
-            <option value={25}>25%</option>
-            <option value={50}>50%</option>
-            <option value={75}>75%</option>
-            <option value={100}>100%</option>
-          </select>
+          <div className="space-y-2">
+            <select
+              value={form.progress || 0}
+              onChange={e => setForm({ ...form, progress: Number(e.target.value) })}
+              className="w-32 px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
+            >
+              <option value={0}>0%</option>
+              <option value={25}>25%</option>
+              <option value={50}>50%</option>
+              <option value={75}>75%</option>
+              <option value={100}>100%</option>
+            </select>
+            {/* Visual progress bar */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 transition-all duration-300 rounded-full"
+                    style={{ width: `${form.progress || 0}%` }}
+                  ></div>
+                </div>
+              </div>
+              <span className="text-xs text-gray-400 min-w-[3rem] text-right">
+                {form.progress || 0}%
+              </span>
+            </div>
+          </div>
         </div>
         
         {/* Assignation moderne - seulement pour les admins */}
@@ -187,13 +238,49 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
               <span className="text-xs text-gray-400">{form.files.length} file(s) selected</span>
             )}
           </div>
+          {/* Persisted files list for existing task */}
+          {initial?.id && (
+            <div className="mt-2">
+              <div className="text-xs text-gray-400 mb-1">Existing files</div>
+              {persistedBusy ? (
+                <div className="text-xs text-gray-500">Loading...</div>
+              ) : (
+                (persistedFiles && persistedFiles.length > 0) ? (
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {persistedFiles.map((f, i) => (
+                      <li key={`${f?.path || 'file'}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-white text-xs flex items-center justify-between">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="truncate" title={f?.name || f?.path || 'file'}>{f?.name || f?.path || 'file'}</div>
+                          <div className="text-[10px] text-gray-400">{typeof f?.size === 'number' ? (f.size/1024).toFixed(1) + ' KB' : ''}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {f?.url && (
+                            <a href={f.url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-white text-[10px]">Open</a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePersisted(f?.path)}
+                            className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-[10px]"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-[11px] text-gray-500">No files yet</div>
+                )
+              )}
+            </div>
+          )}
           {Array.isArray(form.files) && form.files.length > 0 && (
             <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {form.files.map((f, i) => (
-                <li key={`${f.name}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-white text-xs flex items-center justify-between">
+                <li key={`${f?.name || 'file'}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-white text-xs flex items-center justify-between">
                   <div className="flex-1 min-w-0 pr-2">
-                    <div className="truncate" title={f.name}>{f.name}</div>
-                    <div className="text-[10px] text-gray-400">{(f.size/1024).toFixed(1)} KB</div>
+                    <div className="truncate" title={f?.name || 'file'}>{f?.name || 'file'}</div>
+                    <div className="text-[10px] text-gray-400">{typeof f?.size === 'number' ? (f.size/1024).toFixed(1) + ' KB' : ''}</div>
                   </div>
                   <button
                     type="button"
@@ -324,21 +411,25 @@ export default function ProjectDrawer({
     if (editMode && form && (form.id || form._id)) {
       try {
         // Extraire user_ids et group_ids de l'objet task
-        const { user_ids, group_ids, files = [], ...taskData } = task;
+        const { user_ids = [], group_ids = [], files = [], ...taskData } = task;
       
         
         if (task.id) {
           console.log('Updating existing task:', task.id);
-          await updateTask(task.id, { ...taskData, project_id: form.id || form._id }, user_ids, group_ids, session);
+          const safeUserIds = Array.isArray(user_ids) ? user_ids : [];
+          const safeGroupIds = Array.isArray(group_ids) ? group_ids : [];
+          await updateTask(task.id, { ...taskData, project_id: form.id || form._id }, safeUserIds, safeGroupIds, session);
           toast.success('Task updated successfully!');
 
           // Upload any selected files for existing task
           if (Array.isArray(files) && files.length > 0) {
             const uploaded = [];
             for (const file of files) {
+              if (!file || typeof file !== 'object' || typeof file.name !== 'string') continue;
               const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
               const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
               const path = `tasks/${task.id}/${filename}`;
+              console.log('[upload][existing-task] uploading to', path, 'type:', file.type, 'size:', file.size);
               const { error: upErr } = await supabase.storage.from('filesmanagment').upload(path, file, { contentType: file.type || 'application/octet-stream' });
               if (upErr) throw upErr;
               const { data: signed } = await supabase.storage.from('filesmanagment').createSignedUrl(path, 60 * 60 * 24 * 7);
@@ -352,9 +443,17 @@ export default function ProjectDrawer({
               });
             }
             try {
-              await addTaskFiles(task.id, uploaded, session);
+              console.log('[api][addTaskFiles] sending:', uploaded);
+              const updatedFiles = await addTaskFiles(task.id, uploaded, session);
+              console.log('[api][addTaskFiles] returned:', updatedFiles);
+              // Update local state immediately with returned files
+              setFormTasks(prev => prev.map(t => t.id === task.id ? { ...t, files: updatedFiles } : t));
+              // Also refresh from server for full consistency (assignments/progress)
+              const refreshed = await getTasksByProjectWithAssignees(form.id || form._id, session);
+              setFormTasks(refreshed);
             } catch (e) {
               console.error('[addTaskFiles after update] failed:', e);
+              try { toast.error(`Failed to save task files: ${e?.message || e}`); } catch (_) {}
             }
           }
           
@@ -364,26 +463,30 @@ export default function ProjectDrawer({
               ? { 
                   ...t, 
                   ...taskData,
-                  user_ids: user_ids || [],
-                  group_ids: group_ids || [],
+                  user_ids: safeUserIds,
+                  group_ids: safeGroupIds,
                   // Compatibilité avec anciens alias
-                  assignees: user_ids || [],
-                  groups: group_ids || []
+                  assignees: safeUserIds,
+                  groups: safeGroupIds
                 }
               : t
           ));
         } else {
           console.log('Creating new task with project_id:', form.id || form._id);
-          const newTask = await createTask({ ...taskData, project_id: form.id || form._id },user_ids, group_ids, session);//user_ids, group_ids,
+          const safeUserIds = Array.isArray(user_ids) ? user_ids : [];
+          const safeGroupIds = Array.isArray(group_ids) ? group_ids : [];
+          const newTask = await createTask({ ...taskData, project_id: form.id || form._id }, safeUserIds, safeGroupIds, session);
           toast.success('Task created successfully!');
 
           // Upload files selected at creation time
           if (Array.isArray(files) && files.length > 0 && newTask?.id) {
             const uploaded = [];
             for (const file of files) {
+              if (!file || typeof file !== 'object' || typeof file.name !== 'string') continue;
               const ext = file.name.includes('.') ? file.name.split('.').pop() : '';
               const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext : ''}`;
               const path = `tasks/${newTask.id}/${filename}`;
+              console.log('[upload][new-task] uploading to', path, 'type:', file.type, 'size:', file.size);
               const { error: upErr } = await supabase.storage.from('filesmanagment').upload(path, file, { contentType: file.type || 'application/octet-stream' });
               if (upErr) throw upErr;
               const { data: signed } = await supabase.storage.from('filesmanagment').createSignedUrl(path, 60 * 60 * 24 * 7);
@@ -397,19 +500,27 @@ export default function ProjectDrawer({
               });
             }
             try {
-              await addTaskFiles(newTask.id, uploaded, session);
+              console.log('[api][addTaskFiles-create] sending:', uploaded);
+              const updatedFiles = await addTaskFiles(newTask.id, uploaded, session);
+              console.log('[api][addTaskFiles-create] returned:', updatedFiles);
+              // Update local state for the new task as well
+              setFormTasks(prev => prev.map(t => t.id === newTask.id ? { ...t, files: updatedFiles } : t));
+              // Refresh list from server
+              const refreshed = await getTasksByProjectWithAssignees(form.id || form._id, session);
+              setFormTasks(refreshed);
             } catch (e) {
               console.error('[addTaskFiles after create] failed:', e);
+              try { toast.error(`Failed to save task files: ${e?.message || e}`); } catch (_) {}
             }
           }
           
           // Ajouter la nouvelle tâche à l'état local
           const taskWithAssignments = {
             ...newTask,
-            user_ids: user_ids || [],
-            group_ids: group_ids || [],
-            assignees: user_ids || [],
-            groups: group_ids || []
+            user_ids: safeUserIds,
+            group_ids: safeGroupIds,
+            assignees: safeUserIds,
+            groups: safeGroupIds
           };
           setFormTasks(prev => [taskWithAssignments, ...prev]);
         }
@@ -470,25 +581,33 @@ export default function ProjectDrawer({
         {/* Boutons overlay toujours visibles */}
         {open && (
           <div
-            className="fixed z-50"
-            style={{ top: 32, right: expanded ? 64 : 32 }}
+            className="fixed z-50   top-0 w-[100%]  px-4"
+            style={{ top: 0 }}
           >
-            <div className="flex gap-2">
+            <div className="flex justify-between gap-2">
               <button
                 onClick={() => setExpanded(e => !e)}
-                className="bg-gray-200 rounded-full p-2 text-gray-700 hover:text-blue-600 text-2xl"
+                className=" rounded-full p-2 text-gray-700 hover:text-blue-600 w-10 h-10 flex items-center justify-center"
                 aria-label={expanded ? 'Reduce' : 'Expand'}
                 disabled={loading}
               >
-                {expanded ? '🗕' : '🗖'}
+                {expanded ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                )}
               </button>
               <button
                 onClick={onClose}
-                className="bg-gray-200 rounded-full p-2 text-gray-700 hover:text-blue-600 text-2xl"
+                className=" rounded-full p-2 text-gray-700 hover:text-blue-600 w-10 h-10 flex items-center justify-center"
                 aria-label="Close"
                 disabled={loading}
               >
-                F
+                <span className="text-red-500 text-2xl">X</span>
               </button>
             </div>
           </div>
@@ -530,7 +649,7 @@ export default function ProjectDrawer({
             >
               {/* Colonne gauche */}
               <div className="flex flex-col gap-4 bg-white/5 rounded-xl p-4 border border-white/10">
-                <h2 className="text-2xl font-bold mb-1 text-white col-span-2">
+                <h2 className="text-2xl font-bold mb-1 text-gray-400 col-span-2">
                   {editMode ? 'Edit Project' : 'Create Project'}
                 </h2>
                 <div>
@@ -754,6 +873,8 @@ export default function ProjectDrawer({
                             ...formTasks[editingTaskIdx],
                             user_ids: formTasks[editingTaskIdx].user_ids || [],
                             group_ids: formTasks[editingTaskIdx].group_ids || formTasks[editingTaskIdx].groups || [],
+                            // Do not preload persisted files as "selected" files
+                            files: []
                           }
                         : null
                     }
@@ -881,17 +1002,7 @@ export default function ProjectDrawer({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                   </svg>
                                 </button>
-                                {task.id && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setFilesTaskOpenId(prev => prev === task.id ? null : task.id)}
-                                    className="p-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200 flex items-center justify-center"
-                                    disabled={loading}
-                                    title="Manage files"
-                                  >
-                                    📎
-                                  </button>
-                                )}
+                               
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteTask(task, idx)}
