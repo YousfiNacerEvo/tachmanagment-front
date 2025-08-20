@@ -43,9 +43,15 @@ export default function ProjectCard({ project, onEdit }) {
           {project.title}
         </Link>
         <span className={`px-2 py-1 rounded text-xs font-semibold
-          ${project.status === 'done' ? 'bg-green-400 text-green-900' : project.status === 'in_progress' ? 'bg-blue-400 text-blue-900' : 'bg-yellow-400 text-yellow-900'}`}
+          ${project.displayStatus === 'done' ? 'bg-green-400 text-green-900' : 
+            project.displayStatus === 'in_progress' ? 'bg-blue-400 text-blue-900' : 
+            project.displayStatus === 'overdue' ? 'bg-red-400 text-red-900' : 
+            'bg-yellow-400 text-yellow-900'}`}
         >
-          {project.status === 'done' ? 'Done' : project.status === 'in_progress' ? 'In Progress' : 'Pending'}
+          {project.displayStatus === 'done' ? 'Done' : 
+           project.displayStatus === 'in_progress' ? 'In Progress' : 
+           project.displayStatus === 'overdue' ? 'Overdue' : 
+           'Pending'}
         </span>
       </div>
       <div className="text-xs text-gray-300 mb-2">

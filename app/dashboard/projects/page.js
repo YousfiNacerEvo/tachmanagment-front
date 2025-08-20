@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser, assignGroupToProject, unassignGroupFromProject, getGroupsByProject, getGroupMembers, addProjectFiles, notifyProjectCreated, addTaskFiles } from '../../../lib/api';
+import { getProjects, createProject, updateProject, deleteProject, createTask, getProjectsByUser, assignGroupToProject, unassignGroupFromProject, getGroupsByProject, getGroupMembers, addProjectFiles, notifyProjectCreated, addTaskFiles, updateOverdueProjects } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
 import ProjectDrawer from '../../../components/ProjectDrawer';
 import ProjectHeaderTabs from '../../../components/ProjectHeaderTabs';
@@ -16,14 +16,33 @@ const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', color: 'bg-yellow-400 text-yellow-900' },
   { value: 'in_progress', label: 'In Progress', color: 'bg-blue-400 text-blue-900' },
   { value: 'done', label: 'Done', color: 'bg-green-400 text-green-900' },
+  { value: 'overdue', label: 'Overdue', color: 'bg-red-400 text-red-900' },
 ];
 
 function StatusBadge({ status }) {
   const option = STATUS_OPTIONS.find(opt => opt.value === status);
   if (!option) return null;
   return (
-    <span className={`px-2 py-1 rounded text-xs font-semibold ${option.color}`}>{option.label}</span>
+            <span className={`px-2 py-1 rounded text-xs font-semibold ${option.color}`}>
+          {project.displayStatus === 'overdue' ? 'Overdue' : option.label}
+        </span>
   );
+}
+
+// Fonction pour vérifier si un projet est en retard
+function checkProjectOverdue(project) {
+  if (!project.end || project.status === 'done') return false;
+  const endDate = new Date(project.end);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+  return endDate < today;
+}
+
+// Fonction pour obtenir le statut réel d'un projet (incluant overdue)
+function getProjectRealStatus(project) {
+  if (project.status === 'done') return 'done';
+  if (checkProjectOverdue(project)) return 'overdue';
+  return project.status;
 }
 
 function ProjectsContent() {
@@ -60,6 +79,7 @@ function ProjectsContent() {
 
   const [timeoutError, setTimeoutError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [overdueCount, setOverdueCount] = useState(0);
 
   const fetchProjects = useCallback(() => {
     setLoading(true);
@@ -69,7 +89,17 @@ function ProjectsContent() {
     fetch()
       .then(data => {
         console.log('[fetchProjects] data:', data);
-        setProjects(data);
+        // Appliquer le statut overdue automatiquement
+        const projectsWithOverdue = data.map(project => ({
+          ...project,
+          displayStatus: getProjectRealStatus(project)
+        }));
+        setProjects(projectsWithOverdue);
+        
+        // Compter les projets en retard
+        const overdueProjects = projectsWithOverdue.filter(project => project.displayStatus === 'overdue');
+        setOverdueCount(overdueProjects.length);
+        
         setError(null);
       })
       .catch(err => {
@@ -591,6 +621,20 @@ function ProjectsContent() {
     }
   };
 
+  const handleUpdateOverdueProjects = async () => {
+    try {
+      setIsRefreshing(true);
+      await updateOverdueProjects(session);
+      fetchProjects(); // Recharger les projets après la mise à jour
+      toast.success('Overdue projects updated successfully!');
+    } catch (err) {
+      console.error('Failed to update overdue projects:', err);
+      toast.error('Failed to update overdue projects: ' + err.message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Fonction pour filtrer et rechercher les projets
   const filterProjects = (projects) => {
     console.log('[filterProjects] input:', projects);
@@ -652,6 +696,8 @@ function ProjectsContent() {
         )}
       </div>
 
+      {/* Indicateur des projets en retard */}
+      
       {/* Composant de recherche et filtres */}
       <SearchAndFilter
         searchTerm={searchTerm}

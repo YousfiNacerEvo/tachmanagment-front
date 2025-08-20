@@ -723,6 +723,7 @@ export default function ProjectDrawer({
                     <option value="pending">Pending</option>
                     <option value="in_progress">In Progress</option>
                     <option value="done">Done</option>
+                    <option value="overdue">Overdue</option>
                   </select>
                 </div>
                 <div className="flex gap-2">

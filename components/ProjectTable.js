@@ -59,9 +59,15 @@ export default function ProjectTable({ projects, onEdit, pageSize = 10 }) {
               </td>
               <td className="px-4 py-3">
                 <span className={`px-2 py-1 rounded text-xs font-semibold
-                  ${project.status === 'done' ? 'bg-green-100 text-green-700' : project.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}
+                  ${project.displayStatus === 'done' ? 'bg-green-100 text-green-700' : 
+                    project.displayStatus === 'in_progress' ? 'bg-blue-100 text-blue-700' : 
+                    project.displayStatus === 'overdue' ? 'bg-red-100 text-red-700' : 
+                    'bg-yellow-100 text-yellow-700'}`}
                 >
-                  {project.status === 'done' ? 'Done' : project.status === 'in_progress' ? 'In Progress' : 'Pending'}
+                  {project.displayStatus === 'done' ? 'Done' : 
+                   project.displayStatus === 'in_progress' ? 'In Progress' : 
+                   project.displayStatus === 'overdue' ? 'Overdue' : 
+                   'Pending'}
                 </span>
               </td>
               <td className="px-4 py-3">

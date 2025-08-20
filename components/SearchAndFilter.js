@@ -26,7 +26,8 @@ export default function SearchAndFilter({
       return [
         { value: 'pending', label: 'Pending' },
         { value: 'in progress', label: 'In Progress' },
-        { value: 'done', label: 'Done' }
+        { value: 'done', label: 'Done' },
+        { value: 'overdue', label: 'Overdue' }
       ];
     }
   };

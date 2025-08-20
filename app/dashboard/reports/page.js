@@ -284,12 +284,25 @@ export default function ReportsPage() {
       const colors = {
         pending: 'rgba(234,179,8,0.7)', // yellow
         in_progress: 'rgba(59,130,246,0.7)', // blue
-        done: 'rgba(34,197,94,0.7)' // green
+        done: 'rgba(34,197,94,0.7)', // green
+        overdue: 'rgba(239,68,68,0.7)' // red
       };
+      
+      // Function to normalize status labels
+      const normalizeStatusLabel = (status) => {
+        switch (status) {
+          case 'pending': return 'Pending';
+          case 'in_progress': return 'In Progress';
+          case 'done': return 'Done';
+          case 'overdue': return 'Overdue';
+          default: return status.replace('_', ' ');
+        }
+      };
+      
       return {
         labels: projectsData.timeSeriesByStatus.labels,
         datasets: (projectsData.timeSeriesByStatus.datasets || []).map(ds => ({
-          label: ds.status.replace('_', ' '),
+          label: normalizeStatusLabel(ds.status),
           data: ds.counts,
           backgroundColor: colors[ds.status] || 'rgba(148,163,184,0.7)'
         }))
@@ -306,10 +319,22 @@ export default function ReportsPage() {
         'done': 'rgba(34,197,94,0.7)', // green
         'overdue': 'rgba(239,68,68,0.7)' // red
       };
+      
+      // Function to normalize task status labels
+      const normalizeTaskStatusLabel = (status) => {
+        switch (status) {
+          case 'to do': return 'To Do';
+          case 'in progress': return 'In Progress';
+          case 'done': return 'Done';
+          case 'overdue': return 'Overdue';
+          default: return status;
+        }
+      };
+      
       return {
         labels: tasksData.timeSeriesByStatus.labels,
         datasets: (tasksData.timeSeriesByStatus.datasets || []).map(ds => ({
-          label: ds.status,
+          label: normalizeTaskStatusLabel(ds.status),
           data: ds.counts,
           backgroundColor: colors[ds.status] 
         }))
@@ -399,7 +424,7 @@ export default function ReportsPage() {
           onExportPDF={handleExportProjectsPDF}
           onExportExcel={handleExportProjectsExcel}
           onChartRefs={setProjectsChartRefs}
-          statusColors={{ 'pending': 'rgba(234,179,8,0.7)', 'in progress': 'rgba(59,130,246,0.7)', 'done': 'rgba(34,197,94,0.7)' }}
+          statusColors={{ 'pending': 'rgba(234,179,8,0.7)', 'in progress': 'rgba(59,130,246,0.7)', 'done': 'rgba(34,197,94,0.7)', 'overdue': 'rgba(239,68,68,0.7)' }}
         />
         <Section
           title="Tasks"
