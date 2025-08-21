@@ -72,26 +72,46 @@ function MyWorkContent() {
 
   useEffect(() => {
     if (!user || userLoading) return;
-    
     setLoading(true);
-    Promise.all([
-      getProjectsByUser(user.id,session),
+    Promise.allSettled([
+      getProjectsByUser(user.id, session),
       getAllUserTasks(user.id, session),
       getUserGroupsWithDetails(user.id, session),
       getProjects(session)
     ])
-      .then(([projectsData, tasksData, groupsData, allProjectsData]) => {
-        setProjects(projectsData);
-        setTasks(tasksData);
-        setGroups(groupsData);
-        setAllProjects(allProjectsData);
-        setFilteredTasks(tasksData);
-        setError(null);
-        // handled below in dedicated effect once tasks are set
-      })
-      .catch(err => {
-        console.error('Error loading user data:', err);
-        setError('Failed to load your data');
+      .then((results) => {
+        const [projRes, tasksRes, groupsRes, allProjRes] = results;
+        let anySuccess = false;
+        if (projRes.status === 'fulfilled') {
+          setProjects(projRes.value || []);
+          anySuccess = true;
+        } else {
+          console.warn('Failed to load user projects:', projRes.reason);
+        }
+        if (tasksRes.status === 'fulfilled') {
+          setTasks(tasksRes.value || []);
+          setFilteredTasks(tasksRes.value || []);
+          anySuccess = true;
+        } else {
+          console.warn('Failed to load user tasks:', tasksRes.reason);
+        }
+        if (groupsRes.status === 'fulfilled') {
+          setGroups(groupsRes.value || []);
+          anySuccess = true;
+        } else {
+          console.warn('Failed to load user groups:', groupsRes.reason);
+        }
+        if (allProjRes.status === 'fulfilled') {
+          setAllProjects(allProjRes.value || []);
+          anySuccess = true;
+        } else {
+          console.warn('Failed to load all projects:', allProjRes.reason);
+        }
+        if (!anySuccess) {
+          setError('Failed to load your data');
+        } else {
+          setError(null);
+        }
       })
       .finally(() => setLoading(false));
   }, [user, userLoading, session]);
