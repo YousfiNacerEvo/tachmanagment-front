@@ -64,7 +64,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Validation: Title, Deadline, and Assignation are required
+    // Validation: Title and Deadline are required (assignees optional)
     const errors = {};
     if (!form.title.trim()) {
       errors.title = 'Title is required.';
@@ -72,9 +72,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
     if (!form.deadline) {
       errors.deadline = 'Deadline is required.';
     }
-    if ((form.user_ids || []).length === 0 && (form.group_ids || []).length === 0) {
-      errors.assignees = 'Please assign at least one user or group.';
-    }
+    // Assignees optional
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       setTaskError('Please fill the required fields.');
@@ -193,7 +191,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
             onChangeUsers={user_ids => { setTaskError(null); setFieldErrors(prev => ({ ...prev, assignees: null })); setForm({ ...form, user_ids }); }}
             onChangeGroups={group_ids => { setTaskError(null); setFieldErrors(prev => ({ ...prev, assignees: null })); setForm({ ...form, group_ids }); }}
             disabled={false}
-            label={<span>Assign to <span className="text-red-500">*</span></span>}
+            label={<span>Assign to</span>}
           />
         )}
         {fieldErrors.assignees && (
@@ -681,6 +679,7 @@ export default function ProjectDrawer({
                 <label className="block text-sm font-medium text-gray-400 mb-1">Project Progress</label>
                 <div className="flex items-center gap-4">
                   <select
+                    data-testid="progress"
                     value={form.progress || 0}
                     onChange={async (e) => {
                       const newProgress = Number(e.target.value);

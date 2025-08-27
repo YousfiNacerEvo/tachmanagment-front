@@ -58,29 +58,33 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-gray-900">Welcome back</h1>
           <p className="text-gray-500 mt-1">Sign in to continue</p>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4" data-cy="login-form">
           <input
+            name="email"
             type="email"
             placeholder="Email address"
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
             className="input"
+            data-cy="login-email"
           />
           <input
+            name="password"
             type="password"
             placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
             className="input"
+            data-cy="login-password"
           />
           <div className="flex items-center justify-between text-sm">
             <div />
-            <Link href="/login/forgot" className="text-blue-600 hover:underline">Forgot password?</Link>
+            <Link href="/login/forgot" className="text-blue-600 hover:underline" data-cy="forgot-password-link">Forgot password?</Link>
           </div>
-          <button type="submit" className="btn-primary w-full">Sign in</button>
-          {error && <div className="text-red-500 text-center text-sm mt-2">{error}</div>}
+          <button type="submit" className="btn-primary w-full" data-cy="login-submit">Sign in</button>
+          {error && <div className="text-red-500 text-center text-sm mt-2" data-cy="login-error">{error}</div>}
         </form>
       </div>
     </div>

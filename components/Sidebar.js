@@ -18,7 +18,9 @@ import {
   X,
   User,
   Building,
-  ChevronRight
+  ChevronRight,
+  ChartColumnBig,
+  FolderKanban
 } from 'lucide-react';
 import Image from 'next/image';
 export default function Sidebar() {
@@ -36,8 +38,8 @@ export default function Sidebar() {
     navItems = [
       { href: '/dashboard/projects', label: 'Projects', icon: FolderOpen },
       { href: '/dashboard/tasks', label: 'Tasks', icon: CheckSquare },
-      { href: '/dashboard/statistics', label: 'Statistics', icon: Settings },
-      { href: '/dashboard/task-load-overview', label: 'Task Load Overview', icon: CheckSquare },
+      { href: '/dashboard/statistics', label: 'Statistics', icon: ChartColumnBig },
+      { href: '/dashboard/task-load-overview', label: 'Task Load Overview', icon: FolderKanban },
       { href: '/dashboard/reports', label: 'Reports', icon: Settings },
       { href: '/dashboard/users', label: 'Users', icon: Users },
       { href: '/dashboard/groups', label: 'Groups', icon: Building },
@@ -47,7 +49,6 @@ export default function Sidebar() {
     // Interface simplifiée pour Members et Guests
     navItems = [
       { href: '/dashboard/my-work', label: 'My Work', icon: FolderOpen },
-      { href: '/dashboard/my-groups', label: 'My Groups', icon: Building },
       { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
     ];
   }
@@ -152,6 +153,7 @@ export default function Sidebar() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleLogout}
+            data-cy="logout-button"
             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3.5 px-5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
           >
             <LogOut size={16} />

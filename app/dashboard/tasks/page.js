@@ -352,7 +352,7 @@ function TasksContent() {
     function formatDate(dateString) {
       if (!dateString) return "-";
       const date = new Date(dateString);
-      return date.toLocaleDateString("fr-FR", {
+      return date.toLocaleDateString("en-US", {
         day: "numeric",
         month: "long",
         year: "numeric"

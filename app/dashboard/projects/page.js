@@ -58,6 +58,7 @@ function ProjectsContent() {
     status: 'pending',
     start: '',
     end: '',
+    progress: 0,
     user_ids: [],
     group_ids: [],
   });
@@ -200,25 +201,7 @@ function ProjectsContent() {
       setFormError('End date cannot be before start date.');
       return false;
     }
-    // Nouvelle logique : il faut au moins un utilisateur OU un groupe avec au moins un membre
-    if ((!form.user_ids || form.user_ids.length === 0)) {
-      if (!form.group_ids || form.group_ids.length === 0) {
-        setFormError('At least one user or group must be assigned to the project.');
-        return false;
-      }
-      // Vérifier que les groupes ont au moins un membre
-      const allMembers = await Promise.all(
-        form.group_ids.map(async groupId => {
-          const members = await getGroupMembers(groupId, session);
-          return members;
-        })
-      );
-      const hasMember = allMembers.flat().length > 0;
-      if (!hasMember) {
-        setFormError('Assigned groups must contain at least one user.');
-        return false;
-      }
-    }
+    // Assignees are optional for projects
     setFormError(null);
     return true;
   };
@@ -376,7 +359,7 @@ function ProjectsContent() {
       };
       setProjects(prev => [projectWithAssignments, ...prev]);
       
-      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [], group_ids: [] });
+      setForm({ title: '', description: '', status: 'pending', start: '', end: '', progress: 0, user_ids: [], group_ids: [] });
       setFormTasks([]);
       setFormFiles([]);
       setDrawerOpen(false);
@@ -443,6 +426,7 @@ function ProjectsContent() {
         status: project.status,
         start: project.start,
         end: project.end,
+        progress: project.progress || 0,
         user_ids: filteredAssignees,
         group_ids: groupIds,
       });
@@ -456,6 +440,7 @@ function ProjectsContent() {
         status: project.status,
         start: project.start,
         end: project.end,
+        progress: project.progress || 0,
         user_ids: project.assignees || project.user_ids || [],
         group_ids: [],
       });
@@ -563,7 +548,7 @@ function ProjectsContent() {
       setDrawerOpen(false);
       setEditMode(false);
       setEditId(null);
-      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [], group_ids: [] });
+      setForm({ title: '', description: '', status: 'pending', start: '', end: '', progress: 0, user_ids: [], group_ids: [] });
       setFormError(null);
       toast.success('Project updated successfully!');
     } catch (err) {
@@ -593,7 +578,7 @@ function ProjectsContent() {
       setDrawerOpen(false);
       setEditMode(false);
       setEditId(null);
-      setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [] });
+      setForm({ title: '', description: '', status: 'pending', start: '', end: '', progress: 0, user_ids: [] });
       setFormError(null);
     } catch (err) {
       setFormError(err.message || 'Failed to delete project');
@@ -684,7 +669,7 @@ function ProjectsContent() {
               setDrawerOpen(true);
               setEditMode(false);
               setEditId(null);
-              setForm({ title: '', description: '', status: 'pending', start: '', end: '', user_ids: [], group_ids: [] });
+              setForm({ title: '', description: '', status: 'pending', start: '', end: '', progress: 0, user_ids: [], group_ids: [] });
               setFormTasks([]);
               setFormError(null);
             }}

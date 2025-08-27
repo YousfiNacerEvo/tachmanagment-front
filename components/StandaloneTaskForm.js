@@ -149,10 +149,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
     if (!form.description.trim()) {
       errors.description = 'Description is required for standalone tasks';
     }
-    // Check if at least one user or group is assigned
-    if ((form.user_ids || []).length === 0 && (form.group_ids || []).length === 0) {
-      errors.assignees = 'Please assign at least one user or group';
-    }
+    // Assignees are optional for standalone tasks
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       setError('Please fill the required fields.');
@@ -211,7 +208,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">
+      <h2 className="text-xl font-bold text-gray-900 mb-4" data-cy="task-form-title">
         {task ? 'Edit Task' : 'Create New Task'}
       </h2>
       
@@ -221,7 +218,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" data-cy="task-form">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Title
@@ -237,6 +234,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
             placeholder="Enter task title"
             required
             disabled={!isAdmin}
+            data-cy="task-title"
           />
           {fieldErrors.title && (
             <div className="mt-1 text-xs text-red-600">{fieldErrors.title}</div>
@@ -258,6 +256,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
             placeholder="Enter task description"
             required
             disabled={!isAdmin}
+            data-cy="task-description"
           />
           {fieldErrors.description && (
             <div className="mt-1 text-xs text-red-600">{fieldErrors.description}</div>
@@ -274,6 +273,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
               value={form.status}
               onChange={handleChange}
               className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              data-cy="task-status"
             >
               <option value="to do">To Do</option>
               <option value="in progress">In Progress</option>
@@ -294,6 +294,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
                 !isAdmin ? 'bg-gray-100 cursor-not-allowed' : ''
               }`}
               disabled={!isAdmin}
+              data-cy="task-priority"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -314,6 +315,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
                 !isAdmin ? 'bg-gray-100 cursor-not-allowed' : ''
               }`}
               disabled={!isAdmin}
+              data-cy="task-deadline"
             />
           </div>
         </div>
@@ -357,6 +359,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
               onChange={(e) => setForm(prev => ({ ...prev, files: Array.from(e.target.files || []) }))}
               className="block w-full text-sm text-gray-900"
               disabled={loading}
+              data-cy="task-files"
             />
             {form.files && form.files.length > 0 && (
               <div className="text-xs text-gray-500 mt-1">{form.files.length} file(s) selected</div>
@@ -372,6 +375,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
             onChange={(e) => setForm(prev => ({ ...prev, progress: Number(e.target.value) }))}
             className={`w-28 px-2 py-2 rounded border border-gray-300 bg-white text-gray-900 ${!isAdmin ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             disabled={loading || !isAdmin}
+            data-cy="task-progress"
           >
             <option value={0}>0%</option>
             <option value={25}>25%</option>
@@ -414,6 +418,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
             type="submit"
             disabled={loading}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors disabled:opacity-50"
+            data-cy="task-submit"
           >
             {loading ? 'Saving...' : (task ? 'Update Task' : 'Create Task')}
           </button>
@@ -422,6 +427,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
             onClick={onCancel}
             disabled={loading}
             className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-xl transition-colors disabled:opacity-50"
+            data-cy="task-cancel"
           >
             Cancel
           </button>
