@@ -588,8 +588,8 @@ function ProjectsContent() {
   };
 
   const handleStatusChange = async (project, newStatus) => {
+    console.log('[handleStatusChange] Called with:', { project, newStatus });
     try {
-      const { user_ids} = form;
       // Mise à jour optimiste
       setProjects(prev => prev.map(p => 
         (p.id || p._id) === (project.id || project._id) 
@@ -597,8 +597,13 @@ function ProjectsContent() {
           : p
       ));
       
-      // Appel API
-      await updateProject(project.id || project._id, { status: newStatus },user_ids, session);
+      // Appel API - on ne change que le statut, pas les assignations
+      console.log('[handleStatusChange] Calling updateProject with:', { 
+        id: project.id || project._id, 
+        status: newStatus 
+      });
+      await updateProject(project.id || project._id, { status: newStatus }, [], session);
+      console.log('[handleStatusChange] Project status updated successfully');
     } catch (err) {
       // En cas d'erreur, recharger les projets
       console.error('Failed to update project status:', err);

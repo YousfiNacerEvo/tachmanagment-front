@@ -148,17 +148,20 @@ export default function StatisticsPage() {
       const s = (status || '').toLowerCase();
       if (s === 'terminé' || s === 'completed' || s === 'done') return 'done';
       if (s === 'in_progress' || s === 'in progress') return 'in progress';
+      if (s === 'overdue' || s === 'en retard') return 'overdue';
       if (s === 'pending' || s === 'à faire' || s === 'to do') return 'pending';
       return s;
     };
 
     let projectPendingCount = 0;
     let projectInProgressCount = 0;
+    let projectOverdueCount = 0;
     let projectDoneCount = 0;
     for (const p of projects) {
       const ns = normalizeProjectStatus(p.status);
       if (ns === 'pending') projectPendingCount += 1;
       else if (ns === 'in progress') projectInProgressCount += 1;
+      else if (ns === 'overdue') projectOverdueCount += 1;
       else if (ns === 'done') projectDoneCount += 1;
     }
 
@@ -245,6 +248,7 @@ export default function StatisticsPage() {
       projectCompletionRate,
       projectPendingCount,
       projectInProgressCount,
+      projectOverdueCount,
       projectDoneCount,
       mostActiveUsers, 
       mostActiveGroups, 
@@ -375,11 +379,13 @@ export default function StatisticsPage() {
                 <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex">
                   <div className="h-3 bg-blue-400" style={{ width: `${Math.round((adminStats.projectPendingCount / adminStats.totalProjects) * 100)}%` }} />
                   <div className="h-3 bg-yellow-400" style={{ width: `${Math.round((adminStats.projectInProgressCount / adminStats.totalProjects) * 100)}%` }} />
+                  <div className="h-3 bg-rose-400" style={{ width: `${Math.round((adminStats.projectOverdueCount / adminStats.totalProjects) * 100)}%` }} />
                   <div className="h-3 bg-green-500" style={{ width: `${Math.round((adminStats.projectDoneCount / adminStats.totalProjects) * 100)}%` }} />
                 </div>
                 <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-700">
                   <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-400" /> Pending {adminStats.projectPendingCount}</div>
                   <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-yellow-400" /> In progress {adminStats.projectInProgressCount}</div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-rose-400" /> Overdue {adminStats.projectOverdueCount}</div>
                   <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-green-500" /> Completed {adminStats.projectDoneCount}</div>
                 </div>
               </>

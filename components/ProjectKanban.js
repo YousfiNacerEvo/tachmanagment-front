@@ -21,6 +21,7 @@ import ProjectCard from './ProjectCard';
 const STATUS_COLUMNS = [
   { value: 'pending', label: 'Pending' },
   { value: 'in_progress', label: 'In Progress' },
+  { value: 'overdue', label: 'Overdue' },
   { value: 'done', label: 'Done' },
 ];
 
@@ -69,17 +70,29 @@ export default function ProjectKanban({ projects, onNewProject, onEdit, onStatus
     const { active, over } = event;
     setActiveId(null);
 
+    console.log('[Kanban] handleDragEnd:', { active, over });
+
+    if (!active || !over) {
+      console.log('[Kanban] No active or over element');
+      return;
+    }
+
     let overId = over?.id;
     let newStatus = null;
     const activeProject = items.find(p => p.id === active.id);
 
+    console.log('[Kanban] activeProject:', activeProject);
+    console.log('[Kanban] overId:', overId);
+
     if (STATUS_COLUMNS.some(col => col.value === overId)) {
       newStatus = overId;
+      console.log('[Kanban] Dropped on status column:', newStatus);
     } else {
       // Peut-être qu'on drop sur une carte (projet)
       const overProject = items.find(p => p.id === overId);
       if (overProject) {
         newStatus = overProject.status;
+        console.log('[Kanban] Dropped on project, using its status:', newStatus);
       }
     }
 
@@ -114,13 +127,7 @@ export default function ProjectKanban({ projects, onNewProject, onEdit, onStatus
                   <div className="text-gray-400 text-xs text-center py-4">No projects</div>
                 ) : (
                   colProjects.map((project) => (
-                    <div
-                      key={project.id}
-                      className="bg-[#292933] rounded-xl shadow hover:shadow-lg transition-shadow border border-[#333] mb-2 p-4 cursor-pointer"
-                      style={{ minHeight: 90 }}
-                    >
-                      <ProjectCard project={project} onEdit={onEdit} />
-                    </div>
+                    <ProjectCard key={project.id} project={project} onEdit={onEdit} />
                   ))
                 )}
               </SortableContext>
