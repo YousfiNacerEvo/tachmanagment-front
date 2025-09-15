@@ -84,8 +84,8 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
   };
 
   return (
-    <div className="bg-[#232329] border border-gray-700 rounded-lg p-4 mb-4">
-      <h4 className="text-white font-semibold mb-3">
+    <div className="bg-white border border-gray-700 rounded-lg p-4 mb-4">
+      <h4 className="text-black font-semibold mb-3">
         {initial ? 'Edit Task' : 'Add New Task'}
       </h4>
       <div className="space-y-3">
@@ -102,7 +102,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
               placeholder="Task title"
               value={form.title}
               onChange={e => { setTaskError(null); setFieldErrors(prev => ({ ...prev, title: null })); setForm({ ...form, title: e.target.value }); }}
-              className={`w-full px-3 py-2 rounded bg-[#18181b] border ${fieldErrors.title ? 'border-red-500' : 'border-gray-600'} text-white placeholder-gray-400`}
+              className={`w-full px-3 py-2 rounded bg-white border ${fieldErrors.title ? 'border-red-500' : 'border-gray-600'} text-black placeholder-gray-400`}
               required
             />
             {fieldErrors.title && (
@@ -114,7 +114,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
             <select
               value={form.status}
               onChange={e => setForm({ ...form, status: e.target.value })}
-              className="w-full px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
+              className="w-full px-3 py-2 rounded bg-white border border-gray-600 text-black"
             >
               <option value="to do">To do</option>
               <option value="in progress">In progress</option>
@@ -129,7 +129,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
             <select
               value={form.priority}
               onChange={e => setForm({ ...form, priority: e.target.value })}
-              className="w-full px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
+              className="w-full px-3 py-2 rounded bg-white border border-gray-600 text-black"
             >
               <option value="low">Low Priority</option>
               <option value="medium">Medium Priority</option>
@@ -142,7 +142,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
               type="date"
               value={form.deadline}
               onChange={e => { setFieldErrors(prev => ({ ...prev, deadline: null })); setForm({ ...form, deadline: e.target.value }); }}
-              className={`w-full px-3 py-2 rounded bg-[#18181b] border ${fieldErrors.deadline ? 'border-red-500' : 'border-gray-600'} text-white`}
+              className={`w-full px-3 py-2 rounded bg-white border ${fieldErrors.deadline ? 'border-red-500' : 'border-gray-600'} text-black placeholder-gray-400`}
               required
             />
             {fieldErrors.deadline && (
@@ -158,7 +158,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
             <select
               value={form.progress || 0}
               onChange={e => setForm({ ...form, progress: Number(e.target.value) })}
-              className="w-32 px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white"
+              className="w-32 px-3 py-2 rounded bg-white border border-gray-600 text-black"
             >
               <option value={0}>0%</option>
               <option value={25}>25%</option>
@@ -169,7 +169,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
             {/* Visual progress bar */}
             <div className="flex items-center gap-3">
               <div className="flex-1">
-                <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+                <div className="w-full h-3 bg-white border rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-blue-500 transition-all duration-300 rounded-full"
                     style={{ width: `${form.progress || 0}%` }}
@@ -205,7 +205,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
             value={form.description}
             onChange={e => setForm({ ...form, description: e.target.value })}
             rows={2}
-            className="w-full px-3 py-2 rounded bg-[#18181b] border border-gray-600 text-white placeholder-gray-400 resize-none"
+            className="w-full px-3 py-2 rounded bg-white border border-gray-600 text-black placeholder-gray-400 resize-none"
           />
         </div>
 
@@ -216,7 +216,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
             <button
               type="button"
               onClick={(e) => e.currentTarget.nextElementSibling?.click()}
-              className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+              className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-black text-xs font-medium"
             >
               Select files
             </button>
@@ -246,19 +246,19 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
                 (persistedFiles && persistedFiles.length > 0) ? (
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {persistedFiles.map((f, i) => (
-                      <li key={`${f?.path || 'file'}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-white text-xs flex items-center justify-between">
+                      <li key={`${f?.path || 'file'}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-black text-xs flex items-center justify-between">
                         <div className="flex-1 min-w-0 pr-2">
                           <div className="truncate" title={f?.name || f?.path || 'file'}>{f?.name || f?.path || 'file'}</div>
                           <div className="text-[10px] text-gray-400">{typeof f?.size === 'number' ? (f.size/1024).toFixed(1) + ' KB' : ''}</div>
                         </div>
                         <div className="flex items-center gap-2">
                           {f?.url && (
-                            <a href={f.url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-white text-[10px]">Open</a>
+                            <a href={f.url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-black text-[10px]">Open</a>
                           )}
                           <button
                             type="button"
                             onClick={() => handleRemovePersisted(f?.path)}
-                            className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-[10px]"
+                            className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-black text-[10px]"
                           >
                             Delete
                           </button>
@@ -275,7 +275,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
           {Array.isArray(form.files) && form.files.length > 0 && (
             <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {form.files.map((f, i) => (
-                <li key={`${f?.name || 'file'}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-white text-xs flex items-center justify-between">
+                <li key={`${f?.name || 'file'}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-black text-xs flex items-center justify-between">
                   <div className="flex-1 min-w-0 pr-2">
                     <div className="truncate" title={f?.name || 'file'}>{f?.name || 'file'}</div>
                     <div className="text-[10px] text-gray-400">{typeof f?.size === 'number' ? (f.size/1024).toFixed(1) + ' KB' : ''}</div>
@@ -283,7 +283,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
                   <button
                     type="button"
                     onClick={() => setForm(prev => ({ ...prev, files: prev.files.filter((_, idx) => idx !== i) }))}
-                    className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-[10px]"
+                    className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-black text-[10px]"
                   >
                     Remove
                   </button>
@@ -297,7 +297,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
           <button 
             type="button"
             onClick={handleSubmit}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-medium"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-black text-sm rounded font-medium"
           >
             {initial ? 'Update Task' : 'Add Task'}
           </button>
@@ -307,7 +307,7 @@ function TaskMiniForm({ onAdd, onCancel, initial, users = [], isAdmin = false })
           <button 
             type="button" 
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded font-medium"
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-black text-sm rounded font-medium"
           >
             Cancel
           </button>
@@ -570,7 +570,7 @@ export default function ProjectDrawer({
       <div className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0'}`}></div>
       {/* Drawer */}
       <aside
-        className={`fixed top-0 bottom-0 right-0 z-50 h-full bg-white shadow-2xl will-change-transform transition-transform transition-opacity duration-300 ${open ? 'ease-out' : 'ease-in'}
+        className={`fixed top-0 bottom-0 right-0 z-50 h-full bg-white shadow-2xl will-change-transform transition-all duration-300 ${open ? 'ease-out' : 'ease-in'}
         ${open ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
         ${expanded ? 'left-[16rem] w-auto' : 'left-auto w-[900px]'}
         flex flex-col`}
@@ -579,7 +579,7 @@ export default function ProjectDrawer({
         {/* Boutons overlay toujours visibles */}
         {open && (
           <div
-            className="fixed z-50   top-0 w-[100%]  px-4"
+            className="fixed z-50   top-0 w-[100%]  px-4 bg-white border-b border-b-gray-200"
             style={{ top: 0 }}
           >
             <div className="flex justify-between gap-2">
@@ -618,7 +618,7 @@ export default function ProjectDrawer({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                 </svg>
-                <span className="text-white font-semibold">Loading...</span>
+                <span className="text-black font-semibold">Loading...</span>
               </div>
             </div>
           )}
@@ -647,7 +647,7 @@ export default function ProjectDrawer({
             >
               {/* Colonne gauche */}
               <div className="flex flex-col gap-4 bg-white/5 rounded-xl p-4 border border-white/10">
-                <h2 className="text-2xl font-bold mb-1 text-gray-400 col-span-2">
+                <h2 className="text-2xl font-bold mb-1 text-black col-span-2">
                   {editMode ? 'Edit Project' : 'Create Project'}
                 </h2>
                 <div>
@@ -658,7 +658,7 @@ export default function ProjectDrawer({
                     onChange={onChange}
                     placeholder="Title"
                     required
-                    className="w-full px-4 py-2 rounded border border-gray-600 bg-[#18181b] text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-full px-4 py-2 rounded border border-gray-600 bg-white text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     disabled={loading}
                   />
                 </div>
@@ -670,7 +670,7 @@ export default function ProjectDrawer({
                     onChange={onChange}
                     placeholder="Description"
                     required
-                    className="w-full px-4 py-2 rounded border border-gray-600 bg-[#18181b] text-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                    className="w-full px-4 py-2 rounded border border-gray-600 bg-white text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
                     rows={4}
                     disabled={loading}
                   />
@@ -690,14 +690,15 @@ export default function ProjectDrawer({
                         onChange({ target: { name: 'progress', value: newProgress } });
                       }
                     }}
-                    className="w-32 px-3 py-2 rounded border border-gray-300 bg-white text-gray-900"
+                    className="w-32 px-3 py-2 rounded border border-gray-600 bg-white text-black"
+                    style={{ colorScheme: 'dark' }}
                     disabled={loading}
                   >
-                    <option value={0}>0%</option>
-                    <option value={25}>25%</option>
-                    <option value={50}>50%</option>
-                    <option value={75}>75%</option>
-                    <option value={100}>100%</option>
+                    <option value={0} >0%</option>
+                    <option value={25} >25%</option>
+                    <option value={50} >50%</option>
+                    <option value={75} >75%</option>
+                    <option value={100} >100%</option>
                   </select>
                   <div className="flex-1 flex flex-col">
                     <span className="text-xs text-gray-300">Completion: {form.progress || 0}%</span>
@@ -717,12 +718,13 @@ export default function ProjectDrawer({
                     name="status"
                     value={form.status}
                     onChange={onChange}
-                    className="w-full px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
+                    className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-black placeholder-gray-400"
+                    style={{ colorScheme: 'dark' }}
                   >
-                    <option value="pending">Pending</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="done">Done</option>
-                    <option value="overdue">Overdue</option>
+                    <option value="pending" >Pending</option>
+                    <option value="in_progress" >In Progress</option>
+                    <option value="done" >Done</option>
+                    <option value="overdue" >Overdue</option>
                   </select>
                 </div>
                 <div className="flex gap-2">
@@ -733,7 +735,7 @@ export default function ProjectDrawer({
                       name="start"
                       value={form.start}
                       onChange={onChange}
-                      className="w-full px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
+                      className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-black placeholder-gray-400"
                     />
                   </div>
                   <div className="w-1/2">
@@ -743,7 +745,7 @@ export default function ProjectDrawer({
                       name="end"
                       value={form.end}
                       onChange={onChange}
-                      className="w-full px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white"
+                      className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-black placeholder-gray-400"
                     />
                   </div>
                 </div>
@@ -761,13 +763,13 @@ export default function ProjectDrawer({
                     <FileManager ownerType="project" ownerId={form.id || form._id} title="Files" />
                   </div>
                 ) : (
-                  <div className="bg-[#18181b] border border-gray-700 rounded-lg p-3">
-                    <label className="block text-sm font-medium text-white mb-2">Project files (uploaded after creation)</label>
+                  <div className="bg-white border border-gray-700 rounded-lg p-3">
+                    <label className="block text-sm font-medium text-black mb-2">Project files (uploaded after creation)</label>
                     <div className="flex items-center gap-2 mb-2">
                       <button
                         type="button"
                         onClick={openCreateFilePicker}
-                        className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+                        className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-black text-xs font-medium"
                         disabled={loading}
                       >
                         Select files
@@ -792,7 +794,7 @@ export default function ProjectDrawer({
                     {newFiles.length > 0 && (
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {newFiles.map((f, i) => (
-                          <li key={`${f.name}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-white text-xs flex items-center justify-between">
+                          <li key={`${f.name}-${i}`} className="bg-[#2a2a31] border border-gray-700 rounded p-2 text-black text-xs flex items-center justify-between">
                             <div className="flex-1 min-w-0 pr-2">
                               <div className="truncate" title={f.name}>{f.name}</div>
                               <div className="text-[10px] text-gray-400">{(f.size/1024).toFixed(1)} KB</div>
@@ -800,7 +802,7 @@ export default function ProjectDrawer({
                             <button
                               type="button"
                               onClick={() => setNewFiles(prev => prev.filter((_, idx) => idx !== i))}
-                              className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-[10px]"
+                              className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-black text-[10px]"
                             >
                               Remove
                             </button>
@@ -814,7 +816,7 @@ export default function ProjectDrawer({
               {/* Boutons en bas, sur toute la largeur */}
               <div className={`col-span-2 flex gap-4 mt-2 ${expanded ? 'justify-end' : ''}`}>
                 {error && (
-                  <div className="col-span-2 bg-red-500 text-white px-4 py-3 rounded-lg mb-4 animate-pulse">
+                  <div className="col-span-2 bg-red-500 text-black px-4 py-3 rounded-lg mb-4 animate-pulse">
                     <div className="flex items-center gap-2">
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -844,9 +846,9 @@ export default function ProjectDrawer({
                 )}
               </div>
               {/* Section Project Tasks */}
-              <div className="col-span-2 bg-[#18181b] border border-gray-700 rounded-lg p-4 mt-8">
+              <div className="col-span-2 bg-white border border-gray-700 rounded-lg p-4 mt-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-white">Project Tasks</h3>
+                  <h3 className="text-lg font-bold text-black">Project Tasks</h3>
                   {isAdmin && (
                     <button
                       type="button"
@@ -888,11 +890,11 @@ export default function ProjectDrawer({
                 ) : (
                   <ul className="space-y-2">
                     {formTasks.map((task, idx) => (
-                      <li key={idx} className="bg-[#232329] border border-gray-700 rounded-lg p-4 text-white">
+                      <li key={idx} className="bg-white border border-gray-700 rounded-lg p-4 text-black">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                           {/* Informations de la tâche */}
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-white mb-2">{task.title}</div>
+                            <div className="font-semibold text-black mb-2">{task.title}</div>
                             <div className="flex flex-wrap gap-3 text-sm text-gray-400">
                               <span className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-blue-400"></span>
@@ -913,9 +915,9 @@ export default function ProjectDrawer({
                             {(task.user_ids || []).length > 0 && (
                               <div className="mt-2">
                                 <span className="text-xs text-gray-400 block mb-1">Users:</span>
-                                <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1 border border-gray-700 rounded p-1 bg-[#1b1b22]">
+                                <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1 border border-gray-700 rounded p-1 bg-white">
                                   {(task.user_ids || []).map(userId => (
-                                    <span key={userId} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+                                    <span key={userId} className="text-xs bg-blue-600 text-black px-2 py-1 rounded">
                                       {users.find(u => u.id === userId)?.email || `User not found`}
                                     </span>
                                   ))}
@@ -930,7 +932,7 @@ export default function ProjectDrawer({
                                   {(task.groups || task.group_ids || []).map(groupId => {
                                     const group = groups.find(g => g.id === groupId || g.id === parseInt(groupId));
                                     return (
-                                      <span key={groupId} className="text-xs bg-green-600 text-white px-2 py-1 rounded">
+                                      <span key={groupId} className="text-xs bg-green-600 text-black px-2 py-1 rounded">
                                         {group ? group.name : `Group ${groupId}`}
                                       </span>
                                     );
@@ -965,7 +967,7 @@ export default function ProjectDrawer({
                                     setFormTasks(tasks => tasks.map((t, i) => i === idx ? { ...t, progress: newProgress } : t));
                                   }
                                 }}
-                                className="px-3 py-2 rounded border border-gray-600 bg-[#18181b] text-white text-sm"
+                                className="px-3 py-2 rounded border border-gray-600 bg-white text-black text-sm"
                                 disabled={loading}
                               >
                                 <option value={0}>0%</option>
@@ -976,7 +978,7 @@ export default function ProjectDrawer({
                               </select>
                               <div className="flex flex-col min-w-[100px]">
                                 <span className="text-sm text-gray-300 mb-1">Progress: {task.progress || 0}%</span>
-                                <div className="w-full h-3 bg-gray-700 rounded-full">
+                                <div className="w-full h-3 bg-white border rounded-full">
                                   <div 
                                     className="h-3 rounded-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-300" 
                                     style={{ width: `${task.progress || 0}%` }}
@@ -1037,22 +1039,22 @@ export default function ProjectDrawer({
             </form>
           ) : (
             <div className="max-w-[800px] mx-auto">
-              <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold mb-6 text-black">
                 {editMode ? 'Edit Project' : 'Create Project'}
               </h2>
               
               {/* Section des tâches pour les non-admin */}
-              <div className="bg-[#18181b] border border-gray-700 rounded-lg p-4 mt-8">
-                <h3 className="text-lg font-bold text-white mb-4">Your tasks in this project</h3>
+              <div className="bg-white border border-gray-700 rounded-lg p-4 mt-8">
+                <h3 className="text-lg font-bold text-black mb-4">Your tasks in this project</h3>
                 {formTasks.length === 0 ? (
                   <div className="text-gray-400 text-center py-4">You have no tasks assigned in this project.</div>
                 ) : (
                   <ul className="space-y-3">
                     {formTasks.map((task, idx) => (
-                      <li key={idx} className="bg-[#232329] border border-gray-700 rounded-lg p-4 text-white">
+                      <li key={idx} className="bg-white border border-gray-700 rounded-lg p-4 text-black">
                         <div className="flex flex-col gap-3">
                           <div className="flex-1">
-                            <div className="font-semibold text-white mb-2">{task.title}</div>
+                            <div className="font-semibold text-black mb-2">{task.title}</div>
                             <div className="flex flex-wrap gap-3 text-sm text-gray-400">
                               <span className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-blue-400"></span>
@@ -1070,7 +1072,7 @@ export default function ProjectDrawer({
                               </span>
                             </div>
                             {task.description && (
-                              <div className="text-sm text-gray-300 mt-2 p-2 bg-[#18181b] rounded border border-gray-600">
+                              <div className="text-sm text-gray-300 mt-2 p-2 bg-white rounded border border-gray-600">
                                 {task.description}
                               </div>
                             )}

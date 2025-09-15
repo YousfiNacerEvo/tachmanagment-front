@@ -160,12 +160,12 @@ function Section({
   }, [byStatus, title, statusColors]);
 
   return (
-    <section className="bg-[#0f172a] rounded-xl p-4 md:p-6 shadow border border-[#1e293b]">
+    <section className="bg-white/40 rounded-xl p-4 md:p-6 shadow border border-[#1e293b]">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-        <h2 className="text-xl md:text-2xl font-semibold text-white">{title}</h2>
+        <h2 className="text-xl md:text-2xl font-semibold text-black">{title}</h2>
         <div className="flex gap-2">
-          <button onClick={onExportPDF} className="px-3 py-2 rounded bg-white/10 text-white hover:bg-white/20 transition" disabled={loading}>Export PDF</button>
-          <button onClick={onExportExcel} className="px-3 py-2 rounded bg-white/10 text-white hover:bg-white/20 transition">Export Excel</button>
+          <button onClick={onExportPDF} className="px-3 py-2 rounded bg-white/10 text-black hover:bg-white/20 transition" disabled={loading}>Export PDF</button>
+          <button onClick={onExportExcel} className="px-3 py-2 rounded bg-white/10 text-black hover:bg-white/20 transition">Export Excel</button>
         </div>
       </div>
 
@@ -173,8 +173,8 @@ function Section({
         <div className="text-gray-400 text-center py-10">Loading {title.toLowerCase()} report...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#0b1220] rounded-lg p-3">
-            <h3 className="text-white mb-2">Evolution over time</h3>
+          <div className="bg-white text-black rounded-lg p-3">
+            <h3 className="text-black mb-2">Evolution over time</h3>
             <div className="h-64">
               <BarChart ref={barRef} data={barData} options={{
                 responsive: true,
@@ -197,8 +197,8 @@ function Section({
               }} />
             </div>
           </div>
-          <div className="bg-[#0b1220] rounded-lg p-3">
-            <h3 className="text-white mb-2">Status distribution</h3>
+          <div className="bg-white text-black rounded-lg p-3">
+            <h3 className="text-black mb-2">Status distribution</h3>
             <div className="h-64">
               <PieChart ref={pieRef} data={pieData} options={{
                 responsive: true,
@@ -397,7 +397,7 @@ export default function ReportsPage() {
               type="date"
               value={range.start}
               onChange={(e) => setRange((r) => ({ ...r, start: e.target.value }))}
-              className="w-full rounded bg-[#0b1220] border border-[#1e293b] p-2 text-white"
+              className="w-full rounded bg-white text-black border border-[#1e293b] p-2"
               max={range.end}
             />
           </div>
@@ -407,7 +407,7 @@ export default function ReportsPage() {
               type="date"
               value={range.end}
               onChange={(e) => setRange((r) => ({ ...r, end: e.target.value }))}
-              className="w-full rounded bg-[#0b1220] border border-[#1e293b] p-2 text-white"
+              className="w-full rounded bg-white border border-[#1e293b] p-2 text-black"
               min={range.start}
             />
           </div>

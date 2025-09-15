@@ -26,7 +26,7 @@ export default function ProjectCard({ project, onEdit }) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-[#232329] border border-gray-700 rounded-xl shadow-sm p-4 mb-4 min-w-[220px] max-w-xs cursor-pointer hover:shadow-lg transition-all ${
+      className={`bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-4 min-w-[220px] max-w-xs cursor-pointer hover:shadow-lg transition-all ${
         isDragging ? 'shadow-2xl scale-105' : ''
       }`}
       onClick={(e) => {
@@ -37,16 +37,16 @@ export default function ProjectCard({ project, onEdit }) {
       <div className="flex items-center justify-between mb-1">
         <Link
           href={`/dashboard/projects/${project.id || project._id}`}
-          className="text-base font-semibold truncate text-white hover:text-blue-400 transition-colors"
+          className="text-base font-semibold truncate text-gray-800 hover:text-blue-600 transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
           {project.title}
         </Link>
         <span className={`px-2 py-1 rounded text-xs font-semibold
-          ${project.displayStatus === 'done' ? 'bg-green-400 text-green-900' : 
-            project.displayStatus === 'in_progress' ? 'bg-blue-400 text-blue-900' : 
-            project.displayStatus === 'overdue' ? 'bg-red-400 text-red-900' : 
-            'bg-yellow-400 text-yellow-900'}`}
+          ${project.displayStatus === 'done' ? 'bg-green-500 text-white' : 
+            project.displayStatus === 'in_progress' ? 'bg-blue-500 text-white' : 
+            project.displayStatus === 'overdue' ? 'bg-red-500 text-white' : 
+            'bg-yellow-500 text-white'}`}
         >
           {project.displayStatus === 'done' ? 'Done' : 
            project.displayStatus === 'in_progress' ? 'In Progress' : 
@@ -54,16 +54,16 @@ export default function ProjectCard({ project, onEdit }) {
            'Pending'}
         </span>
       </div>
-      <div className="text-xs text-gray-300 mb-2">
+      <div className="text-xs text-gray-600 mb-2">
         {project.start || '-'} → {project.end || '-'}
       </div>
-      <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
         <div
-          className={`h-2 rounded-full bg-gray-400`}
+          className={`h-2 rounded-full bg-blue-500`}
           style={{ width: '100%' }}
         ></div>
       </div>
-      <span className="text-xs text-gray-400">No progress data</span>
+      <span className="text-xs text-gray-500">No progress data</span>
     </div>
   );
 } 

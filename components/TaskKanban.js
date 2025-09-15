@@ -59,7 +59,7 @@ function TaskCard({ task, onEdit, onDelete }) {
       <div className="flex items-center justify-between mb-3">
         <span className="text-base font-semibold truncate text-white">{task.title}</span>
         <span className={`px-2 py-1 rounded text-sm font-semibold
-          ${task.status === 'terminé' ? 'bg-green-400 text-green-900' : task.status === 'en cours' ? 'bg-blue-400 text-blue-900' : 'bg-gray-400 text-gray-900'}`}
+          ${task.status === 'terminé' ? 'bg-green-500 text-white' : task.status === 'en cours' ? 'bg-blue-500 text-white' : 'bg-gray-500 text-white'}`}
         >
           {task.status}
         </span>

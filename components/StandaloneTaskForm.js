@@ -326,7 +326,7 @@ export default function StandaloneTaskForm({ task = null, onSubmit, onCancel, lo
             <label className="block text-xs font-medium text-gray-400 mb-1">Assigned Groups (from Project)</label>
             <div className="flex flex-wrap gap-2">
               {projectAssignees.groups.map(group => (
-                <span key={group.id} className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs border border-green-200">
+                <span key={group.id} className="bg-green-500 text-white px-2 py-1 rounded-full text-xs border border-green-400">
                   {group.name}
                 </span>
               ))}

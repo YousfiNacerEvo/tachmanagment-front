@@ -173,14 +173,14 @@ export default function ModernAssigneeSelector({
           const user = users.find(u => u.id === userId);
           if (!user) return null;
           return (
-            <span key={userId} className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs shadow border border-blue-200">
+            <span key={userId} className="flex items-center gap-1 bg-blue-500 text-white px-2 py-1 rounded-full text-xs shadow border border-blue-400">
               {showAvatars && user.avatar_url && (
                 <img src={user.avatar_url} alt={user.email} className="w-5 h-5 rounded-full" />
               )}
               {user.name || user.email}
               <button
                 type="button"
-                className="ml-1 text-blue-700 hover:text-red-500"
+                className="ml-1 text-white hover:text-red-300"
                 onClick={() => onChangeUsers(assignedUsers.filter(id => id !== userId))}
                 disabled={disabled}
                 title="Remove"
@@ -194,13 +194,13 @@ export default function ModernAssigneeSelector({
           console.log('[ModernAssigneeSelector] Group data:', group);
           if (!group) return null;
           return (
-            <span key={groupId} className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs shadow border border-green-200 relative">
+            <span key={groupId} className="flex items-center gap-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs shadow border border-green-400 relative">
               <span className="cursor-default">
                 {group.name}
               </span>
               <button
                 type="button"
-                className="ml-1 text-green-700 hover:text-red-500"
+                className="ml-1 text-white hover:text-red-300"
                 onClick={() => onChangeGroups(assignedGroups.filter(id => id !== groupId))}
                 disabled={disabled}
                 title="Remove"
@@ -220,10 +220,10 @@ export default function ModernAssigneeSelector({
       </div>
       {/* Menu popover/autocomplete */}
       {showMenu && (
-        <div className="fixed z-[9999] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#232329] border border-gray-600 rounded shadow-lg p-3 min-w-[250px] max-h-[60vh] overflow-y-auto">
+        <div className="fixed z-[9999] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-gray-600 rounded shadow-lg p-3 min-w-[250px] max-h-[60vh] overflow-y-auto">
           <input
             type="text"
-            className="w-full px-2 py-1 rounded border border-gray-500 bg-[#18181b] text-white mb-2"
+            className="w-full px-2 py-1 rounded border border-gray-500 bg-white text-black mb-2"
             placeholder={allowGroups ? "Search user or group..." : "Search user..."}
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -235,7 +235,7 @@ export default function ModernAssigneeSelector({
             {filteredUsers.map(user => (
               <div
                 key={user.id}
-                className="flex items-center gap-2 px-2 py-1 hover:bg-blue-700 rounded cursor-pointer text-white"
+                className="flex items-center gap-2 px-2 py-1 hover:bg-blue-700 rounded cursor-pointer text-black"
                 onClick={async () => {
                   const hasConflict = await checkUserConflicts(user.id);
                   if (!hasConflict) {
@@ -259,7 +259,7 @@ export default function ModernAssigneeSelector({
                 {filteredGroups.map(group => (
                   <div
                     key={group.id}
-                    className="flex items-center gap-2 px-2 py-1 hover:bg-green-700 rounded cursor-pointer text-white"
+                    className="flex items-center gap-2 px-2 py-1 hover:bg-green-700 rounded cursor-pointer text-black"
                     onClick={async () => {
                       const hasConflict = await checkConflicts(group.id);
                       if (!hasConflict) {

@@ -34,11 +34,11 @@ function DroppableColumn({ id, children, label, onNewProject, projectIds }) {
   return (
     <div
       ref={setNodeRef}
-      className="min-w-[260px] w-full max-w-xs flex flex-col bg-[#232329] rounded-lg p-4 shadow-md"
-      style={{ height: '100%', maxHeight: '100%', marginBottom: 16, border: '1px solid #444', marginRight: 24 }}
+      className="min-w-[260px] w-full max-w-xs flex flex-col bg-white rounded-lg p-4 shadow-md border border-gray-200"
+      style={{ height: '100%', maxHeight: '100%', marginBottom: 16, marginRight: 24 }}
     >
       <div className="flex items-center justify-between mb-2">
-        <h4 className="text-lg font-bold text-white">{label}</h4>
+        <h4 className="text-lg font-bold text-gray-800">{label}</h4>
       </div>
       <div className="flex-1 flex flex-col gap-2 justify-start" style={{ overflowY: 'auto', minHeight: 0 }}>
         {children}
@@ -49,7 +49,6 @@ function DroppableColumn({ id, children, label, onNewProject, projectIds }) {
 
 export default function ProjectKanban({ projects, onNewProject, onEdit, onStatusChange }) {
   const [activeId, setActiveId] = React.useState(null);
-  const [items, setItems] = React.useState(projects);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -57,10 +56,6 @@ export default function ProjectKanban({ projects, onNewProject, onEdit, onStatus
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  React.useEffect(() => {
-    setItems(projects);
-  }, [projects]);
 
   function handleDragStart(event) {
     setActiveId(event.active.id);
@@ -79,7 +74,7 @@ export default function ProjectKanban({ projects, onNewProject, onEdit, onStatus
 
     let overId = over?.id;
     let newStatus = null;
-    const activeProject = items.find(p => p.id === active.id);
+    const activeProject = projects.find(p => p.id === active.id);
 
     console.log('[Kanban] activeProject:', activeProject);
     console.log('[Kanban] overId:', overId);
@@ -89,7 +84,7 @@ export default function ProjectKanban({ projects, onNewProject, onEdit, onStatus
       console.log('[Kanban] Dropped on status column:', newStatus);
     } else {
       // Peut-être qu'on drop sur une carte (projet)
-      const overProject = items.find(p => p.id === overId);
+      const overProject = projects.find(p => p.id === overId);
       if (overProject) {
         newStatus = overProject.status;
         console.log('[Kanban] Dropped on project, using its status:', newStatus);
@@ -98,13 +93,15 @@ export default function ProjectKanban({ projects, onNewProject, onEdit, onStatus
 
     if (activeProject && newStatus && activeProject.status !== newStatus) {
       console.log(`[Kanban] Drag: project ${activeProject.id} from ${activeProject.status} to ${newStatus}`);
+      
+      // Appeler la fonction de changement de statut (qui mettra à jour l'état parent)
       onStatusChange(activeProject, newStatus);
     } else {
       console.warn('[Kanban] Drag error:', { active, over, activeProject, overId, newStatus });
     }
   }
 
-  const activeProject = activeId ? items.find(p => p.id === activeId) : null;
+  const activeProject = activeId ? projects.find(p => p.id === activeId) : null;
 
   return (
     <DndContext
@@ -115,7 +112,7 @@ export default function ProjectKanban({ projects, onNewProject, onEdit, onStatus
     >
       <div className="flex gap-8 overflow-x-auto pb-2 items-start" style={{ height: '100%' }}>
         {STATUS_COLUMNS.map((col) => {
-          const colProjects = items.filter(p => p.status === col.value);
+          const colProjects = projects.filter(p => p.status === col.value);
           const colIds = colProjects.map(p => p.id);
           return (
             <DroppableColumn key={col.value} id={col.value} label={col.label} onNewProject={null} projectIds={colIds}>
@@ -124,7 +121,7 @@ export default function ProjectKanban({ projects, onNewProject, onEdit, onStatus
                 strategy={verticalListSortingStrategy}
               >
                 {colProjects.length === 0 ? (
-                  <div className="text-gray-400 text-xs text-center py-4">No projects</div>
+                  <div className="text-gray-500 text-xs text-center py-4">No projects</div>
                 ) : (
                   colProjects.map((project) => (
                     <ProjectCard key={project.id} project={project} onEdit={onEdit} />

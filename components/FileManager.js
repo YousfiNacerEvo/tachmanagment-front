@@ -241,11 +241,11 @@ export default function FileManager({
   );
 
   return (
-    <div className={`w-full max-w-full min-w-0 bg-[#0f1116] border border-[#222733] rounded-xl p-4 ${className}`}>
+    <div className={`w-full max-w-full min-w-0 bg-white border border-[#222733] rounded-xl p-4 ${className} text-black`}>
       <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
-        <h3 className="text-base md:text-lg font-semibold text-white">{title}</h3>
+        <h3 className="text-base md:text-lg font-semibold ">{title}</h3>
         <div className="flex gap-2">
-          <button type="button" onClick={openPicker} disabled={busy} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs md:text-sm font-medium">Upload</button>
+          <button type="button" onClick={openPicker} disabled={busy} className="bg-blue-600 hover:bg-blue-700  px-3 py-1.5 rounded text-xs md:text-sm font-medium text-white">Upload</button>
           <input ref={inputRef} type="file" multiple className="hidden" onChange={onInputChange} />
         </div>
       </div>
@@ -260,9 +260,9 @@ export default function FileManager({
         {items.length === 0 ? (
           <div className="text-gray-400 text-center py-3">No files uploaded.</div>
         ) : (
-          <ul className="divide-y divide-[#222733] rounded-lg overflow-hidden bg-[#121622] border border-[#222733]">
+          <ul className="divide-y divide-[#222733] rounded-lg overflow-hidden bg-white border border-[#222733]">
             {items.map((it, i) => (
-              <li key={`${it?.path || it?.name || 'file'}-${i}`} className="p-3 text-white flex items-center gap-3 hover:bg-[#161b26]">
+              <li key={`${it?.path || it?.name || 'file'}-${i}`} className="p-3  flex items-center gap-3 ">
                 <div className="text-xl select-none" title={it.type}>{fileIconByMime(it.type)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate" title={it.name}>{it.name}</div>
@@ -274,9 +274,9 @@ export default function FileManager({
                   </div>
                 </div>
                 <div className="flex gap-1 flex-wrap justify-end">
-                  <button onClick={() => handlePreview(it)} className="px-2 py-1 text-[11px] bg-gray-600 hover:bg-gray-500 rounded">Preview</button>
-                  <button onClick={() => handleDownload(it.path, it.name)} className="px-2 py-1 text-[11px] bg-gray-600 hover:bg-gray-500 rounded">Download</button>
-                  <button onClick={() => handleDelete(it.path)} className="px-2 py-1 text-[11px] bg-red-600 hover:bg-red-700 rounded">Delete</button>
+                  <button onClick={() => handlePreview(it)} className="px-2 py-1 text-[11px] bg-gray-600 hover:bg-gray-500 text-white rounded">Preview</button>
+                  <button onClick={() => handleDownload(it.path, it.name)} className="px-2 py-1 text-[11px] bg-gray-600 hover:bg-gray-500 text-white rounded">Download</button>
+                  <button onClick={() => handleDelete(it.path)} className="px-2 py-1 text-[11px] bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
                 </div>
               </li>
             ))}
