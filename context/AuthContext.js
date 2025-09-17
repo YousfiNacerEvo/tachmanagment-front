@@ -53,6 +53,15 @@ export function AuthProvider({ children }) {
           setUser(session.user || null);
           console.log('session', session?.user);
           setSession(session || null);
+          // Initialiser l'horodatage de début de session (ne se réinitialise pas à chaque navigation)
+          try {
+            if (typeof window !== 'undefined') {
+              const key = 'tach:loginAt';
+              if (!window.localStorage.getItem(key)) {
+                window.localStorage.setItem(key, String(Date.now()));
+              }
+            }
+          } catch (_) {}
           // Seed role from user-scoped cache immediately to avoid flicker when backend is cold
           try {
             if (session?.user?.id && typeof window !== 'undefined') {
@@ -116,12 +125,22 @@ export function AuthProvider({ children }) {
                 .filter(k => k.startsWith('tach:lastRole:'))
                 .forEach(k => window.localStorage.removeItem(k));
               window.localStorage.removeItem('tach:lastRole');
+              window.localStorage.removeItem('tach:loginAt');
             }} catch (_) {}
             return;
           }
 
           setUser(session.user || null);
           setSession(session || null);
+          // S'assurer que l'horodatage de début de session existe
+          try {
+            if (typeof window !== 'undefined') {
+              const key = 'tach:loginAt';
+              if (!window.localStorage.getItem(key)) {
+                window.localStorage.setItem(key, String(Date.now()));
+              }
+            }
+          } catch (_) {}
           // Ensure loading is not stuck
           setLoading(false);
           if (session?.user?.id) {

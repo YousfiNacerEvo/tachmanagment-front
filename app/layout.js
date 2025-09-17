@@ -2,6 +2,7 @@
 import "./globals.css";
 import { AuthProvider } from '../context/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import SessionCountdown from '../components/SessionCountdown';
 
 // const geistSans = Geist({
 //   variable: "--font-geist-sans",
@@ -24,6 +25,7 @@ export default function RootLayout({ children }) {
       <body className="min-h-screen bg-[#f7f9fb] text-[#171717] font-sans">
         <Toaster position="top-right" />
         <AuthProvider>
+        <SessionCountdown />
         {children}
         </AuthProvider>
       </body>
