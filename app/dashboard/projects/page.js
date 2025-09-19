@@ -113,7 +113,12 @@ function ProjectsContent() {
   useEffect(() => {
     // Redirect only when we are sure user is NOT admin
     if (!authLoading && isMember) {
-      router.replace('/dashboard/my-work');
+      const pid = searchParams?.get('projectId');
+      if (pid) {
+        router.replace(`/dashboard/my-work?projectId=${encodeURIComponent(pid)}`);
+      } else {
+        router.replace('/dashboard/my-work');
+      }
       return;
     }
     // Fonction de nettoyage pour éviter les effets de bord
@@ -164,7 +169,7 @@ function ProjectsContent() {
       isMounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchProjects, authLoading, isAdmin, isMember, user, formLoading]);
+  }, [fetchProjects, authLoading, isAdmin, isMember, user, formLoading, searchParams, router]);
 
   // Ouvrir automatiquement le drawer pour un projet donné via ?projectId= ... (depuis le calendrier)
   useEffect(() => {

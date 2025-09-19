@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState, useMemo, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   getProjects,
   createTask,
@@ -40,6 +40,7 @@ const PRIORITY_COLORS = {
 
 function TasksContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { session } = useAuth();
   const { isAdmin, isMember, loading: authLoading, user } = useUser();
   const [standaloneTasks, setStandaloneTasks] = useState([]);
@@ -61,6 +62,19 @@ function TasksContent() {
     priority: '',
     project: ''
   });
+
+  // Early redirect: non-admin users should use My Work, preserving taskId
+  useEffect(() => {
+    if (authLoading) return;
+    if (isMember) {
+      const tid = searchParams?.get('taskId');
+      if (tid) {
+        router.replace(`/dashboard/my-work?taskId=${encodeURIComponent(tid)}`);
+      } else {
+        router.replace('/dashboard/my-work');
+      }
+    }
+  }, [authLoading, isMember, searchParams, router]);
 
   const fetchData = useCallback(async () => {
     if (!session) return; // Vérifier que session existe avant d'appeler l'API
@@ -113,7 +127,7 @@ function TasksContent() {
     }
   }, [fetchData, authLoading, isAdmin, isMember, user, session]);
 
-  // Open edit modal if taskId is provided in URL (from calendar)
+  // Open edit modal if taskId is provided in URL (from calendar or email)
   useEffect(() => {
     const tid = searchParams?.get('taskId');
     if (!tid) return;
@@ -122,8 +136,13 @@ function TasksContent() {
     const found = all.find(t => String(t.id) === String(tid));
     if (found) {
       handleEditTask(found);
+    } else if (!loading) {
+      // Fallback: if member and not found here, open on My Work which also supports taskId deep-link
+      if (isMember) {
+        router.replace(`/dashboard/my-work?taskId=${encodeURIComponent(tid)}`);
+      }
     }
-  }, [searchParams, standaloneTasks, projectTasks]);
+  }, [searchParams, standaloneTasks, projectTasks, loading, isMember, router]);
 
   // Fonction pour filtrer et rechercher les tâches - DOIT être avant les useMemo
   const filterTasks = (tasks) => {

@@ -41,6 +41,8 @@ function MyWorkContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const openedFromQueryRef = useRef(false);
+  const openedFromHashRef = useRef(false);
+  const projectOpenedRef = useRef(false);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -131,6 +133,73 @@ function MyWorkContent() {
       }
     } catch (_) {}
   }, [searchParams, tasks]);
+
+  // Open edit modal when arriving with #taskId=... in hash after tasks are loaded
+  useEffect(() => {
+    try {
+      if (!tasks || tasks.length === 0) return;
+      if (openedFromHashRef.current) return;
+      const hash = typeof window !== 'undefined' ? window.location.hash : '';
+      if (!hash || !hash.startsWith('#')) return;
+      const params = new URLSearchParams(hash.slice(1));
+      const tid = params.get('taskId');
+      if (!tid) return;
+      const found = tasks.find(t => String(t.id) === String(tid));
+      if (found) {
+        openedFromHashRef.current = true;
+        setActiveTab('tasks');
+        setEditingTask(found);
+        setIsEditModalOpen(true);
+      }
+    } catch (_) {}
+  }, [tasks]);
+
+  // Auto-open project details from query param ?projectId=...
+  useEffect(() => {
+    try {
+      if (projectOpenedRef.current) return;
+      const pid = searchParams?.get('projectId');
+      if (!pid) return;
+      const pidStr = String(pid);
+      // First, check in user's projects
+      if (projects && projects.length > 0) {
+        const inMine = projects.find(p => String(p.id || p._id) === pidStr);
+        if (inMine) {
+          projectOpenedRef.current = true;
+          setActiveTab('projects');
+          handleProjectClick(inMine);
+          return;
+        }
+      }
+      // Next, try allProjects if available
+      if (allProjects && allProjects.length > 0) {
+        const inAll = allProjects.find(p => String(p.id || p._id) === pidStr);
+        if (inAll) {
+          projectOpenedRef.current = true;
+          setActiveTab('projects');
+          handleProjectClick(inAll);
+          return;
+        }
+      }
+      // Finally, fetch details directly by id and open a synthetic project card
+      (async () => {
+        try {
+          const details = await getProjectDetails(pid, session);
+          if (details) {
+            projectOpenedRef.current = true;
+            setActiveTab('projects');
+            const synthetic = { id: details.id || details._id || pid, title: details.title || details.name || 'Project' };
+            setSelectedProject(synthetic);
+            setLoadingProjectDetails(true);
+            setProjectDetails(details);
+            setLoadingProjectDetails(false);
+          }
+        } catch (e) {
+          // Ignore if not allowed or not found
+        }
+      })();
+    } catch (_) {}
+  }, [searchParams, projects, allProjects, session]);
 
   useEffect(() => {
     let filtered = [...tasks];
@@ -479,7 +548,7 @@ function MyWorkContent() {
                     <FolderOpen className="text-blue-600" size={24} />
                     My Projects
                   </h2>
-                 
+                  
                 </div>
                 
                 {projects.length === 0 ? (

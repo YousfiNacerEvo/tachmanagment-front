@@ -11,7 +11,15 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace('/login');
+      try {
+        const href = typeof window !== 'undefined'
+          ? (window.location.pathname + window.location.search + window.location.hash)
+          : '/dashboard';
+        const nextParam = encodeURIComponent(href || '/dashboard');
+        router.replace(`/login?next=${nextParam}`);
+      } catch (_) {
+        router.replace('/login');
+      }
     }
   }, [user, loading, router]);
 

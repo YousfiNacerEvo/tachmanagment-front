@@ -1,21 +1,33 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { login } from '../../lib/auth';
 import Image from 'next/image';
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, setUser, loading, error, setError, role } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
+  // If already logged in, prefer redirecting to next if provided
   useEffect(() => {
     if (!user) return;
-    
-    // Si le rôle est connu, redirection fiable
+
+    const nextUrl = searchParams?.get('next');
+    if (nextUrl) {
+      try {
+        const decoded = decodeURIComponent(nextUrl);
+        if (decoded.startsWith('/')) {
+          router.replace(decoded);
+          return;
+        }
+      } catch (_) {}
+    }
+    // Fallback to role-based destinations
     if (role === 'admin') {
       router.replace('/dashboard/projects');
       return;
@@ -24,10 +36,8 @@ export default function LoginPage() {
       router.replace('/dashboard/my-work');
       return;
     }
-    
-    // Si le rôle n'est pas encore résolu, ne pas rediriger par défaut ici.
-    // La redirection sera gérée par la page d'accueil ou dès que le rôle est déterminé.
-  }, [user, role, router]);
+    // Else wait until role is resolved
+  }, [user, role, router, searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,8 +51,20 @@ export default function LoginPage() {
         setError(error.message);
       }
     } else {
-      // Définir l'utilisateur immédiatement - la redirection se fera via useEffect
       setUser(loggedInUser);
+      // Immediate redirect to next if present (without waiting for role)
+      try {
+        const nextUrl = searchParams?.get('next');
+        if (nextUrl) {
+          const decoded = decodeURIComponent(nextUrl);
+          if (decoded.startsWith('/')) {
+            router.replace(decoded);
+            setFormLoading(false);
+            return;
+          }
+        }
+      } catch (_) {}
+      // Otherwise, role-based redirect will occur via useEffect once role resolves
     }
     setFormLoading(false);
   };
